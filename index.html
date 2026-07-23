@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkers.com - Play & Analyze</title>
+    <style>
+        :root {
+            --bg: #312e2b; --panel-bg: #262421; --panel-border: #403d39;
+            --menu-bg: #1e1e1e; --btn-secondary: #363432; --btn-secondary-hover: #454341;
+            --accent: #81b64c; --accent-hover: #a3d160;
+            --text-main: #ffffff; --text-muted: #c3c3c0;
+            --board-bg: #DDB88C; --line: #7a4f3a; --p1: #F4F4F4; --p2: #1A1A1A;
+        }
+
+        body.theme-dark { --board-bg: #E0E0E0; --line: #555; --p1: #FFF; --p2: #0A0A0A; }
+        body.theme-neon { --bg: #050505; --panel-bg: #0a0a0a; --board-bg: #001a00; --line: #00FF00; --p1: #FF00FF; --p2: #00FFFF; }
+        body.theme-ocean { --bg: #0d1b2a; --panel-bg: #112240; --board-bg: #e6f1ff; --line: #1a365d; --p1: #fff; --p2: #020c1b; }
+        body.theme-lava { --bg: #1a0500; --panel-bg: #2a0800; --board-bg: #ffb347; --line: #3e0c00; --p1: #fff; --p2: #000; }
+        body.theme-forest { --bg: #0d1a0d; --panel-bg: #152b15; --board-bg: #dcedc8; --line: #1b331b; --p1: #fff; --p2: #000; }
+
+        * { box-sizing: border-box; }
+
+        body, html { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg); color: var(--text-main); margin: 0; padding: 0; width: 100%; height: 100%;
+        }
+
+        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .auth-box { background: var(--panel-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--panel-border); width: 350px; text-align: center; }
+        .auth-box h1 { margin-top: 0; color: var(--accent); font-size: 2em; margin-bottom: 5px;}
+        .auth-box p { color: var(--text-muted); margin-bottom: 25px; font-size: 0.9em; }
+        .auth-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; background: #1b1918; border: 1px solid var(--panel-border); color: #fff; }
+        .auth-input:focus { border-color: var(--accent); outline: none; }
+        .auth-btns { display: flex; gap: 10px; } .auth-btns button { flex: 1; padding: 12px; }
+
+        #app-content { display: none; flex-direction: column; align-items: center; min-height: 100vh; }
+        #top-bar { width: 100%; background: var(--panel-bg); border-bottom: 1px solid var(--panel-border); padding: 12px 20px; display: flex; gap: 12px; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); margin-bottom: 30px; position: relative; z-index: 1000; }
+
+        button, select, input { padding: 10px 16px; border-radius: 6px; border: 1px solid transparent; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; background: var(--btn-secondary); color: var(--text-main); font-family: inherit; }
+        button:hover, select:hover { background: var(--btn-secondary-hover); }
+        .btn-primary { background: var(--accent); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-gold { background: #f1c40f; color: #000; } .btn-gold:hover { background: #f39c12; }
+        .btn-danger { background: #FA412D; color: #fff; } .btn-danger:hover { background: #d32f2f; }
+        .btn-info { background: #2196F3; color: #fff; }
+        
+        input[type="text"], input[type="number"], textarea.form-input { background: #1b1918; border: 1px solid var(--panel-border); color: white; border-radius: 6px; padding: 10px; width: 100%; }
+        input:focus, textarea:focus { border-color: var(--accent); outline: none; }
+        input[type="file"] { background: #1b1918; padding: 6px; width: 100%; }
+
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; background-color: var(--panel-bg); min-width: 180px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.6); z-index: 2000; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; top: 100%; left: 0; margin-top: 5px; }
+        .dropdown-content div { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--panel-border); font-size: 0.95em; }
+        .dropdown-content div:hover { background-color: var(--btn-secondary-hover); color: var(--accent); }
+        .dropdown:hover .dropdown-content { display: block; }
+
+        #game-view { display: flex; gap: 40px; background: var(--menu-bg); padding: 30px; border-radius: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); border: 1px solid var(--panel-border); position: relative; }
+        #community-view { display: none; flex-direction: column; width: 100%; max-width: 900px; background: var(--menu-bg); padding: 30px; border-radius: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); border: 1px solid var(--panel-border); }
+
+        .board-container { position: relative; box-sizing: content-box; width: 600px; height: 600px; background-color: var(--line); border: 8px solid var(--panel-border); border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); transition: all 0.3s ease; flex-shrink: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
+        .sq { width: 100%; height: 100%; display: flex; justify-content: flex-end; align-items: flex-end; padding: 4px;}
+        .sq.light { background-color: var(--board-bg); }
+        .sq.dark { background-color: var(--line); cursor: pointer; transition: 0.2s; position: relative;}
+        .coord-label { font-size: 12px; opacity: 0.4; font-weight: bold; pointer-events: none; user-select: none; color: #fff; }
+        .sq.dark:hover { filter: brightness(1.2); }
+        .sq.move-target { background-color: rgba(129, 182, 76, 0.8); box-shadow: inset 0 0 15px var(--accent); cursor: pointer; }
+        .sq.selected-mode { background-color: rgba(255, 193, 7, 0.6); box-shadow: inset 0 0 15px #FFC107; }
+
+        .piece { position: absolute; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); z-index: 20; pointer-events: none; box-shadow: 3px 3px 10px rgba(0,0,0,0.6); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .piece.p1 { background: var(--p1); border: 4px solid rgba(0,0,0,0.2); }
+        .piece.p2 { background: var(--p2); border: 4px solid rgba(255,255,255,0.2); }
+        .piece.king::after { content: "♕"; position: absolute; font-size: 38px; left: 50%; top: 50%; transform: translate(-50%, -50%); text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .piece.p1.king::after { color: #1a1a1a; } .piece.p2.king::after { color: #f1c40f; }
+
+        .eval-bubble { position: absolute; width: 32px; height: 32px; background: #262421; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 16px; z-index: 100; pointer-events: none; border: 3px solid; animation: popInFade 2s forwards; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        @keyframes popInFade { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -150%) scale(1.1); } 80% { opacity: 1; transform: translate(-50%, -150%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -200%) scale(0.8); } }
+
+        .color-blunder { color: #FA412D; } .color-mistake { color: #f1c40f; } .color-ok { color: #A5D6A7; } .color-good { color: #81b64c; } .color-brilliant { color: #1baca6; text-shadow: 0 0 5px rgba(27, 172, 166, 0.5); }
+        .eval-blunder { border-color: #FA412D; color: #FA412D; } .eval-mistake { border-color: #f1c40f; color: #f1c40f; } .eval-ok { border-color: #A5D6A7; color: #A5D6A7; font-size: 18px; } .eval-good { border-color: #81b64c; color: #81b64c; font-size: 20px;} .eval-brilliant { border-color: #1baca6; color: #1baca6; text-shadow: 0 0 5px #1baca6;} 
+
+        .panel { width: 320px; display: flex; flex-direction: column; gap: 12px; }
+        .timer-box { display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 12px 16px; border-radius: 6px; font-family: monospace; font-size: 1.6em; border: 2px solid var(--panel-border); color: var(--text-muted); transition: all 0.2s; position: relative;}
+        .timer-box.active { border-color: var(--text-main); background: #2a2927; color: var(--text-main); }
+        .timer-ms { font-size: 0.5em; opacity: 0.6; }
+        
+        .avatar-img { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid var(--panel-border); background: #111; }
+        .guild-avatar-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 2px solid var(--accent); background: #111; }
+        .player-info { display: flex; align-items: center; gap: 10px; font-size: 0.4em; font-family: sans-serif; color: var(--text-muted); }
+        .color-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid #666; margin-left: 5px; vertical-align: middle;}
+        .ci-white { background: #fff; } .ci-black { background: #1a1a1a; }
+
+        .status { font-size: 1em; padding: 15px; background: var(--panel-bg); border-radius: 6px; text-align: left; border: 1px solid var(--panel-border); font-weight: 500; }
+        .status b { color: var(--accent); }
+        
+        .game-controls { display: flex; justify-content: space-between; gap: 8px; }
+        .game-controls button { flex: 1; font-size: 0.85em; padding: 10px 0; background: var(--panel-bg); border: 1px solid var(--panel-border); }
+        
+        .analysis-controls { display: none; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px;}
+        .log-container { display: none; flex-grow: 1; background: var(--panel-bg); border-radius: 6px; padding: 10px; overflow-y: auto; height: 260px; border: 1px solid var(--panel-border); flex-direction: column; gap: 8px;}
+        .log-entry { padding: 8px; border-bottom: 1px solid #363432; font-size: 0.9em; color: var(--text-muted); }
+        .log-entry b { color: var(--text-main); }
+        .analysis-pgn-banner { background: #111; border: 1px solid var(--panel-border); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 0.75em; color: var(--accent); word-break: break-all; margin-bottom: 10px; display: none; }
+
+        #professor-box { display: none; margin-top: 10px; background: rgba(33, 150, 243, 0.1); border: 1px solid #2196F3; border-radius: 6px; padding: 15px; }
+        #professor-box h3 { margin: 0 0 8px 0; color: #2196F3; font-size: 1em;}
+        #professor-msg { font-size: 0.95em; line-height: 1.4; color: var(--text-muted);}
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .modal-content { background: var(--panel-bg); padding: 30px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; text-align: center; border: 1px solid var(--panel-border); box-shadow: 0 20px 50px rgba(0,0,0,0.5);}
+        .modal-content h2 { color: var(--text-main); margin-top: 0; font-size: 1.5em; border-bottom: 1px solid var(--panel-border); padding-bottom: 15px; }
+        
+        .bots-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 20px; }
+        .bot-card { background: var(--menu-bg); padding: 15px; border-radius: 6px; border: 1px solid var(--panel-border); cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center;}
+        .bot-card:hover { border-color: var(--accent); background: #302e2b; }
+        
+        .tabs-header { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px; }
+        .tabs-header button { flex: 1; background: transparent; border: 1px solid var(--panel-border); color: var(--text-muted); }
+        .tabs-header button.active { background: var(--panel-bg); color: var(--text-main); border-color: var(--accent); }
+        
+        .lesson-section-title { font-size: 1.1em; color: var(--accent); margin: 25px 0 10px 0; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; text-align: left;}
+        .lesson-section-title:first-child { margin-top: 0; }
+        .lessons-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .lesson-btn { background: var(--menu-bg); color: var(--text-main); padding: 15px; border: 1px solid var(--panel-border); border-radius: 6px; text-align: left; transition: 0.2s; border-left: 4px solid var(--panel-border); }
+        .lesson-btn:hover { background: #302e2b; border-color: var(--accent); border-left-color: var(--accent); }
+
+        .article-content { text-align: left; font-size: 0.95em; color: var(--text-muted); line-height: 1.6; }
+        .article-content h3 { color: var(--accent); margin-top: 20px; border-bottom: 1px solid var(--panel-border); padding-bottom: 5px;}
+        .article-content ul { padding-left: 20px; }
+        
+        .list-item { background: var(--panel-bg); padding: 15px; margin-bottom: 10px; border-radius: 6px; text-align: left; border: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;}
+        .history-item { background: var(--panel-bg); padding: 15px; margin-bottom: 10px; border-radius: 6px; text-align: left; border: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; }
+        textarea.pgn-box { width: 100%; height: 100px; background: #111; color: var(--text-muted); border: 1px solid var(--panel-border); padding: 10px; font-family: monospace; margin-top: 15px; resize: none; border-radius: 6px; }
+        
+        .close-btn { margin-top: 20px; width: 100%; background: var(--btn-secondary); }
+
+        #arrows-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
+
+        .profile-header { display: flex; gap: 20px; align-items: center; text-align: left; margin-bottom: 20px; border-bottom: 1px solid var(--panel-border); padding-bottom: 20px; }
+        .profile-avatar-large { width: 80px; height: 80px; border-radius: 12px; border: 3px solid var(--accent); object-fit: cover; background: #111; display:flex; align-items:center; justify-content:center; font-size:35px;}
+        .chat-box { background: #111; height: 250px; border-radius: 6px; border: 1px solid var(--panel-border); overflow-y: auto; padding: 10px; margin-bottom: 15px; text-align: left; font-size: 0.9em; word-wrap: break-word; }
+        .chat-msg { margin-bottom: 8px; color: var(--text-muted); } 
+        .chat-msg b { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h1>Checkers.com</h1>
+            <p data-i18n="auth_subtitle">Sua plataforma online de damas</p>
+            <input type="text" id="auth-username" class="auth-input" placeholder="Nome de Usuário" data-i18n-ph="auth_user">
+            <input type="password" id="auth-password" class="auth-input" placeholder="Senha" data-i18n-ph="auth_pass">
+            <div class="auth-btns">
+                <button class="btn-primary" onclick="handleAuth('login')" data-i18n="auth_login">Entrar</button>
+                <button onclick="handleAuth('register')" data-i18n="auth_register">Cadastrar</button>
+            </div>
+            <div id="auth-error" style="color: #FA412D; margin-top: 15px; font-size: 0.9em; display: none;"></div>
+        </div>
+    </div>
+
+    <div id="app-content">
+        <div id="top-bar">
+            <select id="time-control" style="max-width: 180px;">
+                <option value="none" data-i18n="time_none">⏳ Sem Tempo</option>
+                <option value="rapid" selected data-i18n="time_rapid">⏱️ Normal (8:00)</option>
+                <option value="blitz" data-i18n="time_blitz">🔥 Blitz (3:00)</option>
+                <option value="bullet" data-i18n="time_bullet">⚡ Rápida (1:30)</option>
+            </select>
+
+            <div class="dropdown">
+                <button style="background: var(--panel-bg); border: 1px solid var(--panel-border);" data-i18n="nav_community">🌐 Comunidade ▾</button>
+                <div class="dropdown-content">
+                    <div onclick="openCommunity('friends')" data-i18n="nav_friends">👥 Amigos</div>
+                    <div onclick="openCommunity('guilds')" data-i18n="nav_guilds">🛡️ Guildas</div>
+                    <div onclick="openCommunity('history')" data-i18n="nav_about">📖 Sobre Damas</div>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="openModal('online-menu-modal')" data-i18n="nav_play_online">Jogar Online</button>
+            <button onclick="startGame('pvp')" data-i18n="nav_play_local">Jogar Local</button>
+            <button onclick="openModal('school-modal')" data-i18n="nav_learn">Aprender Damas</button>
+            <button onclick="openModal('config-modal')" data-i18n="nav_config">Configurações</button>
+            <button onclick="openHistory()" data-i18n="nav_matches">Partidas</button>
+            
+            <div style="border-left: 1px solid var(--panel-border); padding-left: 12px; display: flex; gap: 8px;">
+                <input type="text" id="pgn-input" placeholder="Colar PGN..." data-i18n-ph="paste_pgn">
+                <button onclick="importPGN()" data-i18n="btn_analyze">Analisar</button>
+            </div>
+        </div>
+
+        <div id="game-view" class="container">
+            <div class="board-container" id="board"></div>
+            
+            <div class="panel">
+                <div class="timer-box" id="box-p2">
+                    <div class="player-info">
+                        <img id="p2-avatar" src="" class="avatar-img" style="display:none;">
+                        <span style="font-size: 1.5em; color: var(--text-muted);" id="p2-name-label" data-i18n="black_pieces">Pretas</span>
+                    </div>
+                    <div id="time-p2">00:00<span class="timer-ms">.00</span></div>
+                </div>
+
+                <div class="status" id="status-text" data-i18n="status_start">Comece uma partida.</div>
+                
+                <div class="game-controls" id="game-controls">
+                    <button id="btn-hint" onclick="getHint()" data-i18n="btn_hint">Dica (Seta)</button>
+                    <button id="btn-undo" onclick="undoMove()" data-i18n="btn_undo">Desfazer</button>
+                    <button onclick="resign()" data-i18n="btn_resign">Desistir</button>
+                </div>
+
+                <div id="end-controls" style="display: none; flex-direction: column; gap: 8px;">
+                    <button class="btn-primary" style="padding: 12px; font-size: 1em;" onclick="handleRematch()" data-i18n="btn_rematch">🔁 Revanche</button>
+                    <button style="padding: 10px; background: var(--panel-bg); border: 1px solid var(--panel-border);" onclick="handleNewGame()" data-i18n="btn_new_game">➕ Nova Partida</button>
+                    <button style="padding: 10px; background: var(--panel-bg); border: 1px solid var(--panel-border);" onclick="openModal('online-menu-modal')" data-i18n="btn_other_mode">🔄 Outro Modo</button>
+                </div>
+                
+                <div id="professor-box">
+                    <h3>🎓 Klark</h3>
+                    <div id="professor-msg" data-i18n="klark_analyzing">Estou analisando as suas jogadas...</div>
+                </div>
+
+                <div class="analysis-controls" id="analysis-bar">
+                    <button onclick="navHistory(-100)">|&lt;</button>
+                    <button onclick="navHistory(-1)">&lt;</button>
+                    <button onclick="navHistory(1)">&gt;</button>
+                    <button onclick="navHistory(100)">&gt;|</button>
+                </div>
+                
+                <div class="log-container" id="log-container">
+                    <div id="analysis-pgn-banner" class="analysis-pgn-banner"></div>
+                    <div id="log" style="flex-grow: 1; overflow-y: auto;"></div>
+                </div>
+
+                <div class="timer-box" id="box-p1">
+                    <div class="player-info">
+                        <img id="p1-avatar" src="" class="avatar-img" style="display:none;">
+                        <span style="font-size: 1.5em; color: var(--text-muted);" id="p1-name-label" data-i18n="white_pieces">Brancas</span>
+                    </div>
+                    <div id="time-p1">00:00<span class="timer-ms">.00</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="community-view">
+            <h2 style="margin-top: 0; color: var(--accent); border-bottom: 1px solid var(--panel-border); padding-bottom: 15px;" data-i18n="comm_title">🌐 Central da Comunidade</h2>
+            <div class="tabs-header" style="margin-top: 20px;">
+                <button id="tab-comm-friends" class="active" onclick="switchCommTab('friends')" data-i18n="comm_friends_tab">Lista de Amigos</button>
+                <button id="tab-comm-guilds" onclick="switchCommTab('guilds')" data-i18n="comm_guilds_tab">Guildas</button>
+                <button id="tab-comm-history" onclick="switchCommTab('history')" data-i18n="comm_about_tab">Sobre Damas</button>
+            </div>
+            <div id="comm-friends-container"></div>
+            <div id="comm-guilds-container" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: var(--text-main);" data-i18n="comm_guilds_tab">Guildas</h3>
+                    <button class="btn-primary" onclick="document.getElementById('guild-create-form').style.display='block'" data-i18n="btn_create_guild">+ Criar Guilda</button>
+                </div>
+                <div id="guild-create-form" style="display: none; background: #1b1918; padding: 20px; border-radius: 6px; border: 1px solid var(--accent); margin-bottom: 20px; text-align: left;">
+                    <h3 style="margin-top: 0; color: var(--accent);" data-i18n="title_new_guild">Forjar Nova Guilda</h3>
+                    <input type="text" id="guild-name" placeholder="Nome da Guilda" class="form-input" style="margin-bottom: 10px;">
+                    <textarea id="guild-desc" placeholder="Descrição curta..." class="form-input" style="margin-bottom: 10px; height: 60px;"></textarea>
+                    <input type="number" id="guild-elo" placeholder="Elo Mínimo para entrar" class="form-input" style="margin-bottom: 10px;">
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-primary" onclick="createGuild()" data-i18n="btn_create_guild">Criar Guilda</button>
+                        <button onclick="document.getElementById('guild-create-form').style.display='none'" data-i18n="btn_cancel">Cancelar</button>
+                    </div>
+                </div>
+                <div id="guild-list-ui"></div>
+            </div>
+            <div id="comm-history-container" class="article-content" style="display: none;">
+                <h3 data-i18n="origin_title">🕰️ A Origem do Jogo de Damas</h3>
+                <p data-i18n="origin_p1">Acredita-se que o jogo de damas exista há milhares de anos. Tabuleiros e peças similares foram encontrados em escavações na antiga Mesopotâmia, datando de aproximadamente 3000 a.C.</p>
+                <p data-i18n="origin_p2">As Damas como conhecemos hoje originaram-se da fusão entre as regras do antigo jogo <b>Alquerque</b> com o tabuleiro de xadrez em torno do século XII na Europa. O nome "Damas" surgiu na França, em homenagem à peça mais forte do xadrez (a Rainha, ou "Dama").</p>
+                <h3 data-i18n="evo_title">👑 A Evolução da Coroação</h3>
+                <p data-i18n="evo_p1">A Dama "voadora" que cruza o tabuleiro (usada no Brasil) foi implementada para tornar o jogo mais agressivo e explosivo, diferenciando-se completamente das regras de Checkers americanas e inglesas.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="online-menu-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 style="color: var(--text-main); margin-bottom: 20px;" data-i18n="nav_play_online">Jogar Online</h2>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button style="background: var(--panel-bg); border: 1px solid var(--panel-border);" onclick="alert('Sistema de convites em breve!')" data-i18n="play_friends">👥 Jogar com Amigos</button>
+                <button class="btn-gold" onclick="openModal('ranked-modal')" data-i18n="play_ranked">⚔️ Ranqueado</button>
+                <button class="btn-info" onclick="openModal('klark-setup-modal')" data-i18n="play_klark">🎓 Jogar com Klark (Professor)</button>
+            </div>
+            <button class="close-btn" onclick="closeModals()" data-i18n="btn_cancel">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="klark-setup-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 style="color: #2196F3;" data-i18n="title_klark">🎓 Jogar com Klark</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;" data-i18n="desc_klark">Escolha a sua cor. Klark avaliará os seus lances em tempo real.</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button style="background:#fff; color:#000;" onclick="startKlark('white')" data-i18n="btn_white">⚪ Jogar de Brancas</button>
+                <button style="background:#1a1a1a; color:#fff; border: 1px solid #444;" onclick="startKlark('black')" data-i18n="btn_black">⚫ Jogar de Pretas</button>
+                <button class="btn-primary" onclick="startKlark('random')" data-i18n="btn_random">🎲 Aleatório</button>
+            </div>
+            <button class="close-btn" onclick="openModal('online-menu-modal')" data-i18n="btn_back">Voltar</button>
+        </div>
+    </div>
+
+    <div id="ranked-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 style="color: #f1c40f;" data-i18n="play_ranked">⚔️ Partida Ranqueada</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;" data-i18n="desc_ranked">Escolha o tempo. Dicas e desfazimento de lances estarão <b style="color:#fa412d">desativados</b>.</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn-gold" onclick="startRanked('bullet')">⚡ Bullet (1:30)</button>
+                <button class="btn-primary" onclick="startRanked('blitz')">🔥 Blitz (3:00)</button>
+                <button style="background: var(--panel-bg); border: 1px solid var(--panel-border);" onclick="startRanked('rapid')">⏱️ Normal (8:00)</button>
+            </div>
+            <button class="close-btn" onclick="openModal('online-menu-modal')" data-i18n="btn_back">Voltar</button>
+        </div>
+    </div>
+
+    <div id="profile-preview-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: center;" id="profile-preview-content"></div>
+    </div>
+
+    <div id="school-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <h2 data-i18n="nav_learn">🎓 Aprender Damas</h2>
+            <div class="tabs-header">
+                <button id="tab-school-interactive" class="active" onclick="switchSchoolTab('interactive')" data-i18n="tab_interactive">Lições Interativas</button>
+                <button id="tab-school-manual" onclick="switchSchoolTab('manual')" data-i18n="tab_rules">Livro de Regras</button>
+            </div>
+            <div id="lessons-container"></div>
+            <div id="rules-container" class="article-content" style="display: none;">
+                <h3>📖 Regras Brasileiras (Oficiais)</h3>
+                <ul>
+                    <li><b>O Tabuleiro:</b> 64 casas (8x8). Joga-se apenas nas casas escuras.</li>
+                    <li><b>Movimento:</b> Uma casa por vez, na diagonal e para frente.</li>
+                    <li><b>Captura Obrigatória:</b> Se puder comer, você é obrigado. Peças normais podem capturar para trás!</li>
+                    <li><b>Lei da Maioria:</b> Se houver mais de um caminho de captura, é obrigatório escolher o caminho que come o MAIOR NÚMERO de peças.</li>
+                    <li><b>A Dama:</b> Alcançando a última fileira, vira dama. Ela "voa" cruzando várias casas vazias na diagonal, podendo parar em qualquer casa livre após a peça capturada.</li>
+                </ul>
+            </div>
+            <button class="close-btn" onclick="closeModals()" data-i18n="btn_close">Fechar</button>
+        </div>
+    </div>
+
+    <div id="lesson-complete-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 style="color: #f1c40f; border:none;" data-i18n="lesson_complete">🌟 Lição Concluída!</h2>
+            <button class="btn-primary" onclick="loadNextLesson()" style="width: 100%; margin-bottom: 10px; padding: 12px;" data-i18n="btn_next_lesson">Ir para a Próxima Lição</button>
+            <button onclick="openModal('school-modal'); document.getElementById('lesson-complete-modal').style.display='none';" style="width: 100%;" data-i18n="btn_back_menu">Voltar ao Menu</button>
+        </div>
+    </div>
+
+    <div id="config-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 data-i18n="nav_config">Configurações</h2>
+            <div style="text-align: left; margin-bottom: 20px;">
+                <label style="color: var(--text-muted); font-size: 0.9em; font-weight: bold;" data-i18n="cfg_name">Nome de Exibição</label>
+                <input type="text" id="config-display-name" style="width: 100%; margin-top: 8px;">
+            </div>
+            <div style="text-align: left; margin-bottom: 20px;">
+                <label style="color: var(--text-muted); font-size: 0.9em; font-weight: bold;" data-i18n="cfg_avatar">Seu Avatar de Jogador</label>
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px;">
+                    <img id="config-avatar-preview" class="avatar-img" src="" style="display:none;">
+                    <input type="file" id="avatar-input" accept="image/*" onchange="handleAvatarUpload(event)">
+                </div>
+            </div>
+            <div style="text-align: left; margin-bottom: 25px;">
+                <label style="color: var(--text-muted); font-size: 0.9em; font-weight: bold;" data-i18n="cfg_theme">Tema do Tabuleiro</label>
+                <select id="theme-selector" style="width: 100%; margin-top: 8px; padding: 12px; background: var(--menu-bg);">
+                    <option value="classic">Madeira Clássica</option>
+                    <option value="dark">Escuro / Torneio</option>
+                    <option value="neon">Matrix Hacker</option>
+                    <option value="ocean">Oceano Profundo</option>
+                    <option value="lava">Vulcão / Lava</option>
+                    <option value="forest">Floresta Élfica</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-danger" style="flex: 1;" onclick="handleLogout()" data-i18n="btn_logout">Sair</button>
+                <button class="btn-primary" style="flex: 2;" onclick="saveConfig()" data-i18n="btn_save">Salvar e Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="victory-modal" class="modal">
+        <div class="modal-content" style="z-index: 9999; max-width: 500px;">
+            <h1 id="victory-title" style="font-size: 2.5em; margin: 0;"></h1>
+            <p id="victory-subtitle" style="font-size: 1.1em; margin-bottom: 10px; color: var(--text-muted);"></p>
+            <textarea id="victory-pgn" class="pgn-box" readonly></textarea>
+            <div id="victory-standard-controls" style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-primary" style="flex-grow: 1;" onclick="startAnalysisFromVictory()" data-i18n="btn_analyze">Analisar Partida</button>
+                <button class="btn-info" style="flex-grow: 1;" onclick="copyVictoryPGN()" data-i18n="btn_copy_tags">ⓘ Copiar Tags</button>
+            </div>
+            <button class="close-btn" onclick="closeModals()" data-i18n="btn_close">Fechar</button>
+        </div>
+    </div>
+
+    <div id="history-modal" class="modal">
+        <div class="modal-content">
+            <h2 data-i18n="nav_matches">Arquivo de Partidas</h2>
+            <input type="text" id="search-history" placeholder="Pesquisar adversário..." class="form-input" style="margin-bottom: 15px;" onkeyup="filterHistory()">
+            <div id="history-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 20px;"></div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-danger" onclick="clearHistory()" data-i18n="btn_clear_hist">Apagar Histórico</button>
+                <button class="close-btn" style="margin-top: 0; flex-grow: 1;" onclick="closeModals()" data-i18n="btn_back">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    function sanitizeHTML(str) {
+        let temp = document.createElement('div');
+        temp.textContent = str;
+        return temp.innerHTML;
+    }
+
+    async function hashPassword(str, salt = "damas_2026_salt_secure") {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str + salt));
+        return Array.prototype.map.call(new Uint8Array(buf), x=>(('00'+x.toString(16)).slice(-2))).join('');
+    }
+
+    const i18n = {
+        en: {
+            auth_subtitle: "Your offline Checkers platform", auth_user: "Username", auth_pass: "Password", auth_login: "Login", auth_register: "Register",
+            time_none: "⏳ No Time", time_rapid: "⏱️ Normal (8:00)", time_blitz: "🔥 Blitz (3:00)", time_bullet: "⚡ Bullet (1:30)",
+            nav_community: "🌐 Community ▾", nav_friends: "👥 Friends", nav_guilds: "🛡️ Guilds", nav_about: "📖 About Checkers",
+            nav_play_online: "Play Online", nav_play_local: "Play Local", nav_learn: "Learn Checkers", nav_config: "Settings", nav_matches: "Matches",
+            paste_pgn: "Paste PGN...", btn_analyze: "Analyze", black_pieces: "Black", white_pieces: "White",
+            status_start: "Start a match.", btn_hint: "Hint", btn_undo: "Undo", btn_resign: "Resign",
+            btn_rematch: "🔁 Rematch", btn_new_game: "➕ New Game", btn_other_mode: "🔄 Other Mode", klark_analyzing: "I'm analyzing your moves...",
+            comm_title: "🌐 Community Hub", comm_friends_tab: "Friends List", comm_guilds_tab: "Guilds", comm_about_tab: "About Checkers",
+            btn_create_guild: "+ Create Guild", title_new_guild: "Forge New Guild", btn_cancel: "Cancel",
+            origin_title: "🕰️ Origins of Checkers", origin_p1: "Checkers is believed to have existed for thousands of years.", origin_p2: "Modern Checkers originated from merging the rules of Alquerque with a chessboard around the 12th century in Europe.",
+            evo_title: "👑 Evolution of the King", evo_p1: "The 'flying' King (used in Brazil) was implemented to make the game more aggressive.",
+            play_friends: "👥 Play with Friends", play_ranked: "⚔️ Ranked Match", play_klark: "🎓 Play with Klark (Tutor)",
+            title_klark: "🎓 Play with Klark", desc_klark: "Choose your color. Klark will evaluate your moves.", btn_white: "⚪ Play as White", btn_black: "⚫ Play as Black", btn_random: "🎲 Random", btn_back: "Back",
+            desc_ranked: "Choose the time control. Hints and Undos are <b style='color:#fa412d'>disabled</b>.",
+            tab_interactive: "Interactive Lessons", tab_rules: "Rulebook", btn_close: "Close", lesson_complete: "🌟 Lesson Complete!", btn_next_lesson: "Go to Next Lesson", btn_back_menu: "Back to Menu",
+            cfg_name: "Display Name", cfg_avatar: "Player Avatar", cfg_theme: "Board Theme", btn_logout: "Logout", btn_save: "Save & Close",
+            btn_copy_tags: "ⓘ Copy Tags", btn_clear_hist: "Clear History"
+        },
+        pt: {
+            auth_subtitle: "Sua plataforma offline de damas", auth_user: "Nome de Usuário", auth_pass: "Senha", auth_login: "Entrar", auth_register: "Cadastrar",
+            time_none: "⏳ Sem Tempo", time_rapid: "⏱️ Normal (8:00)", time_blitz: "🔥 Blitz (3:00)", time_bullet: "⚡ Rápida (1:30)",
+            nav_community: "🌐 Comunidade ▾", nav_friends: "👥 Amigos", nav_guilds: "🛡️ Guildas", nav_about: "📖 Sobre Damas",
+            nav_play_online: "Jogar Online", nav_play_local: "Jogar Local", nav_learn: "Aprender Damas", nav_config: "Configurações", nav_matches: "Partidas",
+            paste_pgn: "Colar PGN...", btn_analyze: "Analisar", black_pieces: "Pretas", white_pieces: "Brancas",
+            status_start: "Comece uma partida.", btn_hint: "Dica", btn_undo: "Desfazer", btn_resign: "Desistir",
+            btn_rematch: "🔁 Revanche", btn_new_game: "➕ Nova Partida", btn_other_mode: "🔄 Outro Modo", klark_analyzing: "Estou analisando as suas jogadas...",
+            comm_title: "🌐 Central da Comunidade", comm_friends_tab: "Lista de Amigos", comm_guilds_tab: "Guildas", comm_about_tab: "Sobre Damas",
+            btn_create_guild: "+ Criar Guilda", title_new_guild: "Forjar Nova Guilda", btn_cancel: "Cancelar",
+            origin_title: "🕰️ A Origem do Jogo de Damas", origin_p1: "Acredita-se que o jogo de damas exista há milhares de anos.", origin_p2: "As Damas como conhecemos hoje originaram-se da fusão entre as regras do antigo jogo Alquerque com o tabuleiro de xadrez.",
+            evo_title: "👑 A Evolução da Coroação", evo_p1: "A Dama 'voadora' que cruza o tabuleiro foi implementada para tornar o jogo mais agressivo e explosivo.",
+            play_friends: "👥 Jogar com Amigos", play_ranked: "⚔️ Ranqueado", play_klark: "🎓 Jogar com Klark (Professor)",
+            title_klark: "🎓 Jogar com Klark", desc_klark: "Escolha a sua cor. Klark avaliará os seus lances.", btn_white: "⚪ Jogar de Brancas", btn_black: "⚫ Jogar de Pretas", btn_random: "🎲 Aleatório", btn_back: "Voltar",
+            desc_ranked: "Escolha o tempo. Dicas e desfazer lances <b style='color:#fa412d'>desativados</b>.",
+            tab_interactive: "Lições Interativas", tab_rules: "Livro de Regras", btn_close: "Fechar", lesson_complete: "🌟 Lição Concluída!", btn_next_lesson: "Ir para a Próxima Lição", btn_back_menu: "Voltar ao Menu",
+            cfg_name: "Nome de Exibição", cfg_avatar: "Seu Avatar", cfg_theme: "Tema do Tabuleiro", btn_logout: "Sair", btn_save: "Salvar e Fechar",
+            btn_copy_tags: "ⓘ Copiar Tags", btn_clear_hist: "Apagar Histórico"
+        },
+        es: {
+            auth_subtitle: "Tu plataforma de damas offline", auth_user: "Usuario", auth_pass: "Contraseña", auth_login: "Entrar", auth_register: "Registrarse",
+            time_none: "⏳ Sin Tiempo", time_rapid: "⏱️ Normal (8:00)", time_blitz: "🔥 Blitz (3:00)", time_bullet: "⚡ Bala (1:30)",
+            nav_community: "🌐 Comunidad ▾", nav_friends: "👥 Amigos", nav_guilds: "🛡️ Gremios", nav_about: "📖 Sobre Damas",
+            nav_play_online: "Jugar Online", nav_play_local: "Jugar Local", nav_learn: "Aprender Damas", nav_config: "Ajustes", nav_matches: "Partidas",
+            paste_pgn: "Pegar PGN...", btn_analyze: "Analizar", black_pieces: "Negras", white_pieces: "Blancas",
+            status_start: "Inicia una partida.", btn_hint: "Pista", btn_undo: "Deshacer", btn_resign: "Rendirse",
+            btn_rematch: "🔁 Revancha", btn_new_game: "➕ Nueva Partida", btn_other_mode: "🔄 Otro Modo", klark_analyzing: "Analizando tus jugadas...",
+            comm_title: "🌐 Centro de la Comunidad", comm_friends_tab: "Amigos", comm_guilds_tab: "Gremios", comm_about_tab: "Sobre Damas",
+            btn_create_guild: "+ Crear Gremio", title_new_guild: "Forjar Nuevo Gremio", btn_cancel: "Cancelar",
+            origin_title: "🕰️ Origen de las Damas", origin_p1: "El juego de damas existe desde hace miles de años.", origin_p2: "Las Damas modernas se originaron fusionando el Alquerque con el tablero de ajedrez.",
+            evo_title: "👑 Evolución de la Dama", evo_p1: "La Dama 'voladora' se implementó para hacer el juego más explosivo.",
+            play_friends: "👥 Jugar con Amigos", play_ranked: "⚔️ Clasificatoria", play_klark: "🎓 Jugar con Klark (Profesor)",
+            title_klark: "🎓 Jugar con Klark", desc_klark: "Elige tu color. Klark evaluará tus movimientos.", btn_white: "⚪ Jugar con Blancas", btn_black: "⚫ Jugar con Negras", btn_random: "🎲 Aleatorio", btn_back: "Volver",
+            desc_ranked: "Elige el tiempo. Las pistas están <b style='color:#fa412d'>desactivadas</b>.",
+            tab_interactive: "Lecciones", tab_rules: "Reglas", btn_close: "Cerrar", lesson_complete: "🌟 ¡Lección Completada!", btn_next_lesson: "Siguiente Lección", btn_back_menu: "Volver al Menú",
+            cfg_name: "Nombre visible", cfg_avatar: "Tu Avatar", cfg_theme: "Tema", btn_logout: "Salir", btn_save: "Guardar",
+            btn_copy_tags: "ⓘ Copiar", btn_clear_hist: "Borrar Historial"
+        }
+    };
+
+    function applyLanguage() {
+        let browserLang = navigator.language.slice(0, 2).toLowerCase();
+        let lang = i18n[browserLang] ? browserLang : 'en';
+        
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            let key = el.getAttribute('data-i18n');
+            if (i18n[lang][key]) el.innerHTML = i18n[lang][key];
+        });
+
+        document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+            let key = el.getAttribute('data-i18n-ph');
+            if (i18n[lang][key]) el.placeholder = i18n[lang][key];
+        });
+    }
+
+    function openModal(modalId) {
+        closeModals(); const modal = document.getElementById(modalId);
+        if (modal) modal.style.display = 'flex';
+    }
+    function closeModals() { document.querySelectorAll('.modal').forEach(modal => { modal.style.display = 'none'; }); }
+
+    const boardDiv = document.getElementById('board');
+    const statusText = document.getElementById('status-text');
+    const logContainer = document.getElementById('log-container');
+    const logContent = document.getElementById('log'); 
+    const analysisBar = document.getElementById('analysis-bar');
+    const gameControls = document.getElementById('game-controls');
+    const endControls = document.getElementById('end-controls');
+    const profBox = document.getElementById('professor-box');
+    const profMsg = document.getElementById('professor-msg');
+
+    function showAppView(viewName) {
+        document.getElementById('game-view').style.display = 'none';
+        document.getElementById('community-view').style.display = 'none';
+        if(viewName === 'game') document.getElementById('game-view').style.display = 'flex';
+        else if(viewName === 'community') document.getElementById('community-view').style.display = 'flex';
+    }
+    function openCommunity(tab) { closeModals(); showAppView('community'); switchCommTab(tab); }
+
+    let loggedInUser = null; let usersDB = {};
+    function loadUsersDB() { try { usersDB = JSON.parse(localStorage.getItem('damas_users') || '{}'); } catch(e) { usersDB = {}; } }
+    function saveUsersDB() { try { localStorage.setItem('damas_users', JSON.stringify(usersDB)); } catch(e) { console.error("Erro", e); } }
+
+    async function handleAuth(action) {
+        loadUsersDB();
+        let user = sanitizeHTML(document.getElementById('auth-username').value.trim());
+        let pass = document.getElementById('auth-password').value.trim();
+        let err = document.getElementById('auth-error');
+        if(!user || !pass) { err.innerText = "Preencha todos os campos."; err.style.display = 'block'; return; }
+        
+        let hashedPass = await hashPassword(pass);
+
+        if (action === 'register') {
+            if (usersDB[user]) { err.innerText = "Usuário já existe."; err.style.display = 'block'; return; }
+            usersDB[user] = { username: user, password: hashedPass, displayName: user, avatar: '', elo: 1000, matchHistory: [], theme: 'classic' };
+            saveUsersDB(); err.style.color = 'var(--accent)'; err.innerText = "Conta criada com sucesso! Faça login."; err.style.display = 'block';
+        } else if (action === 'login') {
+            if (!usersDB[user] || usersDB[user].password !== hashedPass) {
+                err.style.color = '#FA412D'; err.innerText = "Credenciais inválidas."; err.style.display = 'block'; return;
+            }
+            let sessionToken = await hashPassword(user, "session_secure");
+            localStorage.setItem('damas_session', user); 
+            initAuth();
+        }
+    }
+
+    function initAuth() {
+        applyLanguage(); 
+        loadUsersDB();
+        let sessionUser = localStorage.getItem('damas_session');
+        if (sessionUser && usersDB[sessionUser]) {
+            loggedInUser = usersDB[sessionUser];
+            if(!loggedInUser.matchHistory) loggedInUser.matchHistory = []; 
+            if(!loggedInUser.theme) loggedInUser.theme = 'classic'; 
+            if(!loggedInUser.elo) loggedInUser.elo = 1000;
+            
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'flex';
+            document.getElementById('config-display-name').value = loggedInUser.displayName || '';
+            document.getElementById('theme-selector').value = loggedInUser.theme;
+            
+            document.body.className = ''; 
+            if(loggedInUser.theme !== 'classic') document.body.classList.add(`theme-${loggedInUser.theme}`);
+            
+            updateAvatarUI(); startGame('pvp'); 
+        } else {
+            document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app-content').style.display = 'none';
+        }
+    }
+
+    function handleLogout() { localStorage.removeItem('damas_session'); location.reload(); }
+
+    function saveConfig() {
+        let newName = sanitizeHTML(document.getElementById('config-display-name').value.trim());
+        if(newName) loggedInUser.displayName = newName;
+        const theme = document.getElementById('theme-selector').value;
+        loggedInUser.theme = theme; 
+        usersDB[loggedInUser.username] = loggedInUser; saveUsersDB();
+        document.body.className = ''; if(theme !== 'classic') document.body.classList.add(`theme-${theme}`);
+        drawAllPieces(); closeModals();
+    }
+
+    function handleAvatarUpload(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try { loggedInUser.avatar = e.target.result; usersDB[loggedInUser.username] = loggedInUser; saveUsersDB(); updateAvatarUI(); } 
+            catch (err) { alert("Imagem muito pesada."); }
+        }; reader.readAsDataURL(file);
+    }
+
+    function updateAvatarUI() {
+        const avPreview = document.getElementById('config-avatar-preview'); const p1Av = document.getElementById('p1-avatar');
+        if(loggedInUser && loggedInUser.avatar) { avPreview.src = loggedInUser.avatar; avPreview.style.display = 'block'; p1Av.src = loggedInUser.avatar; p1Av.style.display = 'block'; } 
+        else { avPreview.style.display = 'none'; p1Av.style.display = 'none'; }
+    }
+
+    let localGuilds = []; try { localGuilds = JSON.parse(localStorage.getItem('damas_local_guilds') || '[]'); } catch(e) { localGuilds = []; }
+
+    function switchCommTab(tab) {
+        document.getElementById('tab-comm-friends').classList.remove('active'); document.getElementById('tab-comm-guilds').classList.remove('active'); document.getElementById('tab-comm-history').classList.remove('active');
+        document.getElementById('comm-friends-container').style.display = 'none'; document.getElementById('comm-guilds-container').style.display = 'none'; document.getElementById('comm-history-container').style.display = 'none';
+        if(tab === 'friends') { document.getElementById('tab-comm-friends').classList.add('active'); document.getElementById('comm-friends-container').style.display = 'block'; renderFriends(); }
+        else if (tab === 'guilds') { document.getElementById('tab-comm-guilds').classList.add('active'); document.getElementById('comm-guilds-container').style.display = 'block'; renderGuilds(); }
+        else { document.getElementById('tab-comm-history').classList.add('active'); document.getElementById('comm-history-container').style.display = 'block'; }
+    }
+
+    function renderFriends() {
+        const cont = document.getElementById('comm-friends-container'); 
+        cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding: 20px;">Lista de amigos vazia no momento.</p>';
+    }
+
+    function renderGuilds() {
+        const ui = document.getElementById('guild-list-ui'); ui.innerHTML = '';
+        if(localGuilds.length === 0) { ui.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding: 20px;'>Nenhuma guilda encontrada.</p>"; return; }
+        localGuilds.forEach((g, idx) => {
+            ui.innerHTML += `
+                <div class="list-item" style="align-items: flex-start; gap: 15px;">
+                    <div class="guild-avatar-img" style="display:flex; align-items:center; justify-content:center; color:#555; font-size:24px;">🛡️</div>
+                    <div style="flex-grow: 1;">
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <strong style="font-size: 1.2em; color: var(--accent);">${g.name}</strong>
+                            <span style="font-size: 0.85em; background: #111; padding: 4px 8px; border-radius: 4px;">👥 ${g.membersList.length}/${g.maxMembers} Membros</span>
+                        </div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin: 8px 0;">${g.desc}</div>
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <small>Elo Mínimo: ${g.eloMin}</small>
+                            <button class="btn-primary" style="padding: 6px 12px;" onclick="openGuildDashboard(${idx})">Abrir Painel</button>
+                        </div>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function createGuild() {
+        let n = sanitizeHTML(document.getElementById('guild-name').value); let d = sanitizeHTML(document.getElementById('guild-desc').value); let e = parseInt(document.getElementById('guild-elo').value);
+        if(!n) return alert("Dê um nome para a guilda.");
+        localGuilds.push({ name: n, desc: d || "Sem descrição.", eloMin: e || 0, maxMembers: 50, creator: loggedInUser.username, membersList: [loggedInUser.username], blacklist: [] });
+        localStorage.setItem('damas_local_guilds', JSON.stringify(localGuilds));
+        document.getElementById('guild-create-form').style.display = 'none'; renderGuilds();
+    }
+
+    function openGuildDashboard(idx) {
+        let g = localGuilds[idx];
+        let isAdmin = g.creator === loggedInUser.username;
+        let isMember = g.membersList.includes(loggedInUser.username);
+        
+        let membersHTML = '';
+        g.membersList.forEach(mName => {
+            let u = usersDB[mName]; if(!u) return;
+            membersHTML += `<div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:5px 0;">
+                <span style="color:var(--accent)">${u.displayName} (Elo: ${u.elo})</span>
+                <div style="display:flex; gap:5px;">
+                    <button style="padding:4px; font-size:0.8em;" onclick="alert('Desafio de Guilda enviado para ${u.displayName}')">Desafiar</button>
+                    ${isAdmin && u.username !== loggedInUser.username ? `<button style="padding:4px; font-size:0.8em; background:#FA412D; color:white;" onclick="kickFromGuild(${idx}, '${u.username}')">Banir</button>` : ''}
+                </div>
+            </div>`;
+        });
+
+        document.getElementById('profile-preview-content').innerHTML = `
+            <h2 style="color: var(--accent); margin: 0 0 10px 0;">🛡️ ${g.name}</h2>
+            <div class="tabs-header">
+                <button id="tab-g-chat" class="active" onclick="switchGuildTab('chat')">Chat</button>
+                <button id="tab-g-membros" onclick="switchGuildTab('membros')">Membros</button>
+                ${isAdmin ? `<button id="tab-g-admin" onclick="switchGuildTab('admin')">Admin</button>` : ''}
+            </div>
+            
+            <div id="g-chat-container">
+                <div class="chat-box" id="guild-chat-box"><div class="chat-msg"><b>Sistema:</b> Bem-vindo ao chat da guilda!</div></div>
+                ${isMember ? `<div style="display:flex; gap: 10px;">
+                    <input type="text" id="guild-chat-input" placeholder="Mensagem..." style="background:#1b1918; border:1px solid var(--panel-border); color:white; padding:8px; width:100%; border-radius:6px;">
+                    <button class="btn-primary" onclick="sendGuildMsg()">Enviar</button>
+                </div>` : `<button class="btn-primary" style="width:100%" onclick="joinGuild(${idx})">Entrar na Guilda</button>`}
+            </div>
+
+            <div id="g-membros-container" style="display:none; text-align:left;">
+                <h4 style="margin-top:0">Membros Presentes</h4>
+                <div style="max-height:200px; overflow-y:auto; font-size:0.9em;">${membersHTML}</div>
+            </div>
+
+            ${isAdmin ? `<div id="g-admin-container" style="display:none; text-align:left;">
+                <h4 style="margin-top:0; color:#FA412D">Painel do Líder</h4>
+                <input type="text" id="edit-g-desc" value="${g.desc}" style="width:100%; padding:8px; background:#111; color:white; border:1px solid #444; margin-bottom:10px;">
+                <button class="btn-primary" onclick="saveGuildDesc(${idx})" style="width:100%; margin-bottom:15px;">Salvar Descrição</button>
+                <div style="font-size:0.9em;"><b>Lista Negra:</b> ${g.blacklist.length > 0 ? g.blacklist.join(', ') : 'Vazia'}</div>
+                <button class="btn-danger" style="width:100%; margin-top:10px;" onclick="deleteGuild(${idx})">Deletar Guilda</button>
+            </div>` : ''}
+
+            <button class="close-btn" style="margin-top: 15px;" onclick="document.getElementById('profile-preview-modal').style.display='none'">Fechar</button>
+        `; openModal('profile-preview-modal');
+    }
+
+    function switchGuildTab(tab) {
+        document.getElementById('tab-g-chat').classList.remove('active'); document.getElementById('tab-g-membros').classList.remove('active');
+        document.getElementById('g-chat-container').style.display = 'none'; document.getElementById('g-membros-container').style.display = 'none';
+        let admBtn = document.getElementById('tab-g-admin'); let admCont = document.getElementById('g-admin-container');
+        if(admBtn) { admBtn.classList.remove('active'); admCont.style.display = 'none'; }
+
+        if(tab==='chat') { document.getElementById('tab-g-chat').classList.add('active'); document.getElementById('g-chat-container').style.display = 'block'; }
+        else if(tab==='membros') { document.getElementById('tab-g-membros').classList.add('active'); document.getElementById('g-membros-container').style.display = 'block'; }
+        else if(tab==='admin' && admCont) { admBtn.classList.add('active'); admCont.style.display = 'block'; }
+    }
+
+    function sendGuildMsg() {
+        let input = document.getElementById('guild-chat-input'); let text = sanitizeHTML(input.value.trim()); if(!text) return;
+        let box = document.getElementById('guild-chat-box'); box.innerHTML += `<div class="chat-msg"><b>${loggedInUser.displayName}:</b> ${text}</div>`; input.value = ''; box.scrollTop = box.scrollHeight;
+    }
+
+    function joinGuild(idx) {
+        let g = localGuilds[idx];
+        if(g.blacklist.includes(loggedInUser.username)) return alert("Você está na lista negra desta guilda.");
+        if(loggedInUser.elo < g.eloMin) return alert(`Você não tem Elo suficiente. (Requisito: ${g.eloMin})`);
+        g.membersList.push(loggedInUser.username); localStorage.setItem('damas_local_guilds', JSON.stringify(localGuilds)); openGuildDashboard(idx); renderGuilds();
+    }
+    
+    function kickFromGuild(idx, username) {
+        if(confirm(`Banir ${username} e colocar na lista negra?`)) {
+            let g = localGuilds[idx]; g.membersList = g.membersList.filter(m => m !== username); g.blacklist.push(username);
+            localStorage.setItem('damas_local_guilds', JSON.stringify(localGuilds)); openGuildDashboard(idx); renderGuilds();
+        }
+    }
+    function saveGuildDesc(idx) { localGuilds[idx].desc = sanitizeHTML(document.getElementById('edit-g-desc').value); localStorage.setItem('damas_local_guilds', JSON.stringify(localGuilds)); alert("Salvo!"); renderGuilds(); }
+    function deleteGuild(idx) { if(confirm("Certeza que deseja deletar sua guilda?")) { localGuilds.splice(idx, 1); localStorage.setItem('damas_local_guilds', JSON.stringify(localGuilds)); closeModals(); renderGuilds(); } }
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTone(freq, type, duration, vol) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+    function soundPlace() { playTone(300, 'sine', 0.05, 0.5); setTimeout(()=>playTone(150, 'triangle', 0.05, 0.3), 10); } 
+    function soundCapture() { playTone(100, 'square', 0.1, 0.4); playTone(80, 'sawtooth', 0.15, 0.4); }
+    function soundGood() { playTone(400, 'sine', 0.1, 0.3); setTimeout(()=>playTone(600, 'sine', 0.15, 0.3), 100); }
+    function soundPromote() { playTone(500, 'sine', 0.1, 0.2); setTimeout(()=>playTone(700, 'sine', 0.1, 0.2), 100); setTimeout(()=>playTone(1000, 'sine', 0.3, 0.2), 200); }
+    function soundBlunder() { playTone(150, 'sawtooth', 0.4, 0.2); setTimeout(()=>playTone(120, 'sawtooth', 0.4, 0.2), 150); }
+    function soundApplause() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        for(let i=0; i<20; i++) {
+            setTimeout(() => {
+                let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+                osc.type = 'square'; osc.frequency.setValueAtTime(100 + Math.random()*400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            }, Math.random() * 800);
+        }
+    }
+    function shootConfetti() {
+        const colors = ['#81b64c', '#1baca6', '#f1c40f', '#fff'];
+        for(let i=0; i<60; i++) {
+            let conf = document.createElement('div'); conf.style.position = 'fixed'; conf.style.width = '8px'; conf.style.height = '8px';
+            conf.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)]; conf.style.left = Math.random() * 100 + 'vw'; conf.style.top = '-10px'; conf.style.zIndex = '99999'; conf.style.pointerEvents = 'none';
+            document.body.appendChild(conf); let fallDuration = Math.random() * 2 + 2;
+            conf.animate([ { transform: `translate3d(0,0,0) rotate(0deg)`, opacity: 1 }, { transform: `translate3d(${Math.random()*100 - 50}px, 100vh, 0) rotate(${Math.random()*360}deg)`, opacity: 0 } ], { duration: fallDuration * 1000, easing: 'linear' });
+            setTimeout(() => conf.remove(), fallDuration * 1000);
+        }
+    }
+    function getAlgebraic(id) { const cols = ['A','B','C','D','E','F','G','H']; const r = Math.floor(id / 8); const c = id % 8; return cols[c] + (8 - r); }
+
+    let boardState = Array(64).fill(0);
+    let currentPlayer = 1; let globalBottomColor = 1; let phase = 'PLAY'; 
+    let gameMode = 'pvp'; let botName = ''; let currentBotElo = 0; let isRanked = false; let isKlarkMode = false;
+    let selectedPieceId = null; let validMovesCache = []; let activeSequenceId = null; let deadPieces = []; let hintArrowActive = false; 
+
+    let isAnalysis = false; let currentAnalysisPGN = ''; let historyLine = []; let currentMoveIndex = -1; let activeLessonIndex = -1; let expectedMove = null; 
+    let timeControl = 'rapid'; let p1Time = 0, p2Time = 0; let timerInterval = null; let lastTick = 0; let moveStartTime = 0;
+
+    function initBoardUI() {
+        boardDiv.innerHTML = `<svg id="arrows-layer" viewBox="0 0 600 600" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none;"><defs><marker id="arrowhead" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><polygon points="0 0, 4 2, 0 4" fill="rgba(241, 196, 15, 0.9)" /></marker></defs><line id="best-move-arrow" x1="0" y1="0" x2="0" y2="0" stroke="rgba(241, 196, 15, 0.9)" stroke-width="8" marker-end="url(#arrowhead)" style="display: none;" /></svg>`;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                let isDark = (r + c) % 2 !== 0; let sq = document.createElement('div'); sq.classList.add('sq'); sq.classList.add(isDark ? 'dark' : 'light');
+                let id = r * 8 + c; sq.dataset.id = id;
+                if(isDark) {
+                    let label = document.createElement('span'); label.classList.add('coord-label'); label.innerText = getAlgebraic(id); sq.appendChild(label); sq.addEventListener('click', () => handlePlayerClick(id));
+                } boardDiv.appendChild(sq);
+            }
+        } drawAllPieces(); 
+    }
+
+    function setupInitialBoard() {
+        boardState = Array(64).fill(0); let topColor = globalBottomColor === 1 ? 2 : 1;
+        for(let r = 0; r < 8; r++) { for(let c = 0; c < 8; c++) { if((r + c) % 2 !== 0) { if (r < 3) boardState[r*8+c] = topColor; else if (r > 4) boardState[r*8+c] = globalBottomColor; } } }
+    }
+
+    function clearArrow() { let arrow = document.getElementById('best-move-arrow'); if(arrow) { arrow.style.display = 'none'; } }
+    function drawArrow(fromId, toId) {
+        let r1 = Math.floor(fromId / 8), c1 = fromId % 8; let r2 = Math.floor(toId / 8), c2 = toId % 8; let arrow = document.getElementById('best-move-arrow');
+        if(arrow) { arrow.setAttribute('x1', (c1 * 75) + 37.5); arrow.setAttribute('y1', (r1 * 75) + 37.5); arrow.setAttribute('x2', (c2 * 75) + 37.5); arrow.setAttribute('y2', (r2 * 75) + 37.5); arrow.style.display = 'block'; }
+    }
+
+    function initTimers() {
+        cancelAnimationFrame(timerInterval); timeControl = document.getElementById('time-control').value;
+        if (timeControl === 'none') { document.getElementById('box-p1').style.display = 'none'; document.getElementById('box-p2').style.display = 'none'; return; }
+        document.getElementById('box-p1').style.display = 'flex'; document.getElementById('box-p2').style.display = 'flex';
+        if (timeControl === 'rapid') { p1Time = 480000; p2Time = 480000; } else if (timeControl === 'blitz') { p1Time = 180000; p2Time = 180000; } else if (timeControl === 'bullet') { p1Time = 90000; p2Time = 90000; } 
+        lastTick = Date.now(); moveStartTime = Date.now(); updateTimerUI(); timerLoop();
+    }
+
+    function timerLoop() {
+        if (phase === 'END' || isAnalysis || activeLessonIndex !== -1 || timeControl === 'none') return;
+        let now = Date.now(); let delta = now - lastTick; lastTick = now;
+        if (currentPlayer === globalBottomColor) { p1Time -= delta; if(p1Time <= 0) { p1Time = 0; endGame(globalBottomColor === 1 ? 2 : 1, true); return; } }
+        else { p2Time -= delta; if(p2Time <= 0) { p2Time = 0; endGame(globalBottomColor, true); return; } }
+        updateTimerUI(); timerInterval = requestAnimationFrame(timerLoop);
+    }
+
+    function updateTimerUI() {
+        const formatTime = (ms) => {
+            let totalSec = Math.max(0, ms) / 1000; let m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            let s = Math.floor(totalSec % 60).toString().padStart(2, '0'); let frac = Math.floor((totalSec % 1) * 100).toString().padStart(2, '0');
+            return `${m}:${s}<span class="timer-ms">.${frac}</span>`;
+        };
+        document.getElementById('time-p1').innerHTML = formatTime(p1Time); document.getElementById('time-p2').innerHTML = formatTime(p2Time);
+        document.getElementById('box-p1').className = currentPlayer === globalBottomColor ? 'timer-box active' : 'timer-box';
+        document.getElementById('box-p2').className = currentPlayer !== globalBottomColor ? 'timer-box active' : 'timer-box';
+    }
+
+    function handleTimeIncrement() {
+        if (timeControl === 'bullet') { let moveDuration = Date.now() - moveStartTime; if (moveDuration < 1000) { if (currentPlayer === globalBottomColor) p1Time += 1500; else p2Time += 1500; } }
+        moveStartTime = Date.now();
+    }
+
+    function saveStateToHistory(actionInfo, rawMove = null) {
+        if (isAnalysis && currentMoveIndex < historyLine.length - 1) historyLine = historyLine.slice(0, currentMoveIndex + 1);
+        historyLine.push({ boardState: [...boardState], phase: phase, currentPlayer: currentPlayer, action: actionInfo, rawMove: rawMove });
+        currentMoveIndex = historyLine.length - 1;
+    }
+
+    function handleRematch() {
+        if(isRanked) startRanked(document.getElementById('time-control').value);
+        else if (isKlarkMode) startKlark('random');
+        else startGame(gameMode, botName);
+    }
+    function handleNewGame() { handleRematch(); }
+
+    function startGame(mode, bName = '') {
+        closeModals(); showAppView('game'); isAnalysis = false; activeLessonIndex = -1; profBox.style.display = 'none'; hintArrowActive = false;
+        document.getElementById('analysis-pgn-banner').style.display = 'none'; logContainer.style.display = 'none'; analysisBar.style.display = 'none'; 
+        
+        gameControls.style.display = 'flex'; endControls.style.display = 'none';
+        document.getElementById('btn-hint').style.display = 'inline-block'; document.getElementById('btn-undo').style.display = 'inline-block'; 
+        
+        gameMode = mode; isRanked = false; isKlarkMode = false; botName = bName; let myName = loggedInUser ? loggedInUser.displayName : "Você";
+        if (mode.startsWith('bot')) { globalBottomColor = Math.random() < 0.5 ? 1 : 2; } else { globalBottomColor = 1; }
+
+        let botColor = globalBottomColor === 1 ? 2 : 1;
+        if (mode.startsWith('bot')) {
+            currentBotElo = parseInt(mode.split('-')[1]) || 1200;
+            document.getElementById('p1-name-label').innerHTML = `${myName} <span class="color-indicator ci-${globalBottomColor===1?'white':'black'}"></span>`;
+            document.getElementById('p2-name-label').innerHTML = `${botName} <span class="color-indicator ci-${botColor===1?'white':'black'}"></span>`;
+        } else {
+            let lang = navigator.language.slice(0, 2).toLowerCase();
+            document.getElementById('p1-name-label').innerHTML = `${i18n[lang] && i18n[lang].white_pieces ? i18n[lang].white_pieces : 'Brancas'} <span class="color-indicator ci-white"></span>`;
+            document.getElementById('p2-name-label').innerHTML = `${i18n[lang] && i18n[lang].black_pieces ? i18n[lang].black_pieces : 'Pretas'} <span class="color-indicator ci-black"></span>`;
+        }
+
+        setupInitialBoard(); currentPlayer = 1; phase = 'PLAY'; selectedPieceId = null; activeSequenceId = null; deadPieces = []; historyLine = []; currentMoveIndex = -1; 
+        initBoardUI(); clearArrow(); boardDiv.style.pointerEvents = 'auto'; refreshValidMoves(); updateStatus(); initTimers(); saveStateToHistory({ type: 'start' });
+
+        if (mode.startsWith('bot') && currentPlayer !== globalBottomColor) { boardDiv.style.pointerEvents = 'none'; setTimeout(playAI, 800); }
+    }
+
+    function startRanked(modeTime) {
+        closeModals(); showAppView('game'); document.getElementById('time-control').value = modeTime;
+        isAnalysis = false; activeLessonIndex = -1; profBox.style.display = 'none'; hintArrowActive = false;
+        document.getElementById('analysis-pgn-banner').style.display = 'none'; logContainer.style.display = 'none'; analysisBar.style.display = 'none'; 
+        
+        gameControls.style.display = 'flex'; endControls.style.display = 'none';
+        document.getElementById('btn-hint').style.display = 'none'; document.getElementById('btn-undo').style.display = 'none';
+        
+        gameMode = 'ranked'; isRanked = true; isKlarkMode = false; globalBottomColor = Math.random() < 0.5 ? 1 : 2; let opColor = globalBottomColor === 1 ? 2 : 1;
+        
+        document.getElementById('p1-name-label').innerHTML = `${loggedInUser.displayName} (${loggedInUser.elo}) <span class="color-indicator ci-${globalBottomColor===1?'white':'black'}"></span>`;
+        document.getElementById('p2-name-label').innerHTML = `Buscando jogador online... <span class="color-indicator ci-${opColor===1?'white':'black'}"></span>`;
+        boardDiv.style.pointerEvents = 'none'; 
+        
+        setTimeout(() => {
+            let opElo = loggedInUser.elo + Math.floor(Math.random() * 100) - 50; botName = "Adversário Online"; currentBotElo = opElo;
+            document.getElementById('p2-name-label').innerHTML = `${botName} (${opElo}) <span class="color-indicator ci-${opColor===1?'white':'black'}"></span>`; boardDiv.style.pointerEvents = 'auto';
+            setupInitialBoard(); currentPlayer = 1; phase = 'PLAY'; selectedPieceId = null; activeSequenceId = null; deadPieces = []; historyLine = []; currentMoveIndex = -1; 
+            initBoardUI(); clearArrow(); refreshValidMoves(); updateStatus(); initTimers(); saveStateToHistory({ type: 'start' });
+            if (currentPlayer !== globalBottomColor) { boardDiv.style.pointerEvents = 'none'; setTimeout(playAI, 800); }
+        }, 2000);
+    }
+
+    function startKlark(colorChoice) {
+        closeModals(); showAppView('game'); isAnalysis = false; activeLessonIndex = -1; hintArrowActive = false;
+        document.getElementById('analysis-pgn-banner').style.display = 'none'; logContainer.style.display = 'none'; analysisBar.style.display = 'none'; 
+        
+        gameControls.style.display = 'flex'; endControls.style.display = 'none';
+        document.getElementById('btn-hint').style.display = 'inline-block'; document.getElementById('btn-undo').style.display = 'inline-block';
+        
+        gameMode = 'klark'; isRanked = false; isKlarkMode = true; currentBotElo = 3000; 
+        
+        if(colorChoice === 'random') globalBottomColor = Math.random() < 0.5 ? 1 : 2;
+        else globalBottomColor = colorChoice === 'white' ? 1 : 2;
+        
+        let opColor = globalBottomColor === 1 ? 2 : 1;
+        document.getElementById('p1-name-label').innerHTML = `${loggedInUser.displayName} <span class="color-indicator ci-${globalBottomColor===1?'white':'black'}"></span>`;
+        document.getElementById('p2-name-label').innerHTML = `Prof. Klark <span class="color-indicator ci-${opColor===1?'white':'black'}"></span>`;
+        
+        let lang = navigator.language.slice(0, 2).toLowerCase();
+        profBox.style.display = 'block'; profMsg.innerHTML = i18n[lang] && i18n[lang].klark_analyzing ? i18n[lang].klark_analyzing : "Vamos jogar! Analisando lances.";
+        
+        setupInitialBoard(); currentPlayer = 1; phase = 'PLAY'; selectedPieceId = null; activeSequenceId = null; deadPieces = []; historyLine = []; currentMoveIndex = -1; 
+        initBoardUI(); clearArrow(); boardDiv.style.pointerEvents = 'auto'; refreshValidMoves(); updateStatus(); initTimers(); saveStateToHistory({ type: 'start' });
+        
+        if (currentPlayer !== globalBottomColor) { boardDiv.style.pointerEvents = 'none'; setTimeout(playAI, 800); }
+    }
+
+    function getCapturePaths(board, player, id, capturedSoFar = []) {
+        let paths = []; let pType = board[id]; let isKing = (pType === 3 || pType === 4); let row = Math.floor(id / 8), col = id % 8; let opp = player === 1 ? [2,4] : [1,3]; let dirs = [[-1,-1], [-1,1], [1,-1], [1,1]];
+        dirs.forEach(([dr, dc]) => {
+            if(isKing) {
+                let r = row + dr, c = col + dc; let foundOppId = -1;
+                while(r>=0 && r<8 && c>=0 && c<8) { let currId = r*8+c; if(board[currId] === player || board[currId] === pType) break; if(opp.includes(board[currId])) { if(!capturedSoFar.includes(currId)) foundOppId = currId; break; } r += dr; c += dc; }
+                if(foundOppId !== -1) {
+                    let landR = Math.floor(foundOppId/8) + dr; let landC = (foundOppId%8) + dc;
+                    while(landR>=0 && landR<8 && landC>=0 && landC<8) {
+                        let landId = landR*8+landC;
+                        if(board[landId] === 0 || landId === id) { 
+                            let newCaptured = [...capturedSoFar, foundOppId]; let newBoard = [...board]; newBoard[id] = 0; newBoard[landId] = pType; newBoard[foundOppId] = 0; 
+                            let subPaths = getCapturePaths(newBoard, player, landId, newCaptured);
+                            if(subPaths.length === 0) paths.push({path: [landId], captured: newCaptured}); else subPaths.forEach(sp => paths.push({path: [landId, ...sp.path], captured: sp.captured}));
+                        } else { break; } landR += dr; landC += dc;
+                    }
+                }
+            } else {
+                let capR = row + dr, capC = col + dc; let landR = row + 2*dr, landC = col + 2*dc;
+                if(landR>=0 && landR<8 && landC>=0 && landC<8) {
+                    let capId = capR*8+capC; let landId = landR*8+landC;
+                    if(opp.includes(board[capId]) && !capturedSoFar.includes(capId) && (board[landId] === 0 || landId === id)) {
+                        let newCaptured = [...capturedSoFar, capId]; let newBoard = [...board]; newBoard[id] = 0; newBoard[landId] = pType; newBoard[capId] = 0; 
+                        let subPaths = getCapturePaths(newBoard, player, landId, newCaptured);
+                        if(subPaths.length === 0) paths.push({path: [landId], captured: newCaptured}); else subPaths.forEach(sp => paths.push({path: [landId, ...sp.path], captured: sp.captured}));
+                    }
+                }
+            }
+        }); return paths;
+    }
+
+    function calculateValidMoves(board, player, requiredStartId = null) {
+        let moves = []; let maxCaps = 0;
+        for(let i=0; i<64; i++) {
+            if(requiredStartId !== null && i !== requiredStartId) continue;
+            let p = board[i];
+            if(p === player || p === player+2) {
+                let paths = getCapturePaths(board, player, i, []);
+                paths.forEach(pathObj => { let caps = pathObj.captured.length; if(caps > maxCaps) { maxCaps = caps; moves = []; } if(caps === maxCaps && caps > 0) { moves.push({ from: i, to: pathObj.path[0], captured: [pathObj.captured[0]] }); } });
+            }
+        }
+        if(maxCaps === 0 && requiredStartId === null) {
+            for(let i=0; i<64; i++) {
+                 let p = board[i];
+                 if(p === player || p === player+2) {
+                     let isKing = p > 2; let dirs = isKing ? [[-1,-1],[-1,1],[1,-1],[1,1]] : (player === globalBottomColor ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]]); let row = Math.floor(i/8), col = i%8;
+                     dirs.forEach(([dr, dc]) => {
+                         let r = row+dr, c = col+dc;
+                         while(r>=0 && r<8 && c>=0 && c<8) { if(board[r*8+c] === 0) { moves.push({from: i, to: r*8+c, captured: []}); if(!isKing) break; } else break; r+=dr; c+=dc; }
+                     });
+                 }
+            }
+        }
+        let uniqueMoves = []; let seen = new Set(); moves.forEach(m => { let key = m.from + '-' + m.to; if(!seen.has(key)) { seen.add(key); uniqueMoves.push(m); } }); return { moves: uniqueMoves, isCapture: maxCaps > 0 };
+    }
+
+    function refreshValidMoves() {
+        let res = calculateValidMoves(boardState, currentPlayer, activeSequenceId); validMovesCache = res.moves;
+        if(validMovesCache.length === 0 && !isAnalysis && phase !== 'END') endGame(currentPlayer === 1 ? 2 : 1);
+    }
+
+    function handlePlayerClick(id) {
+        if (!isAnalysis && (gameMode.startsWith('bot') || isRanked || isKlarkMode) && currentPlayer !== globalBottomColor) return; 
+        if (hintArrowActive) { clearArrow(); hintArrowActive = false; }
+        let pType = boardState[id];
+        
+        if ((pType === currentPlayer || pType === currentPlayer + 2) && activeSequenceId === null) {
+            if (validMovesCache.some(m => m.from === id)) { selectedPieceId = id; drawHighlights(); }
+        } else if (selectedPieceId !== null) {
+            let move = validMovesCache.find(m => m.from === selectedPieceId && m.to === id);
+            if (move) {
+                if(activeLessonIndex !== -1) {
+                    if (id === expectedMove || (Array.isArray(expectedMove) && expectedMove.includes(id))) {
+                        processMove(move, true); 
+                    } else { profMsg.innerHTML = "❌"; soundBlunder(); } return;
+                } processMove(move);
+            } else if (pType === currentPlayer || pType === currentPlayer + 2) {
+                if (activeSequenceId === null && validMovesCache.some(m => m.from === id)) { selectedPieceId = id; drawHighlights(); }
+            } else { selectedPieceId = null; drawHighlights(); }
+        }
+    }
+
+    function drawHighlights() {
+        document.querySelectorAll('.sq').forEach(sq => sq.classList.remove('selected-mode', 'move-target'));
+        if (selectedPieceId !== null) {
+            document.querySelector(`.sq[data-id="${selectedPieceId}"]`).classList.add('selected-mode');
+            validMovesCache.forEach(m => { if(m.from === selectedPieceId) { document.querySelector(`.sq[data-id="${m.to}"]`).classList.add('move-target'); } });
+        }
+    }
+
+    function processMove(move, isLessonMode = false) {
+        let prevStateBoard = [...boardState]; 
+        let playerWhoMoved = currentPlayer;
+
+        let pType = boardState[move.from]; boardState[move.from] = 0; boardState[move.to] = pType; selectedPieceId = null;
+        let promoted = false; let rowTo = Math.floor(move.to / 8);
+        if (pType === globalBottomColor && rowTo === 0) { boardState[move.to] = pType + 2; promoted = true; }
+        if (pType === (globalBottomColor === 1 ? 2 : 1) && rowTo === 7) { boardState[move.to] = pType + 2; promoted = true; }
+
+        let captureSequenceContinues = false;
+
+        if(move.captured.length > 0) {
+            if(!isAnalysis && !isLessonMode) soundCapture();
+            deadPieces.push(move.captured[0]); boardState[move.captured[0]] = 0; 
+            
+            if (!promoted) {
+                let nextMoves = calculateValidMoves(boardState, currentPlayer, move.to);
+                if (nextMoves.isCapture) {
+                    captureSequenceContinues = true;
+                    activeSequenceId = move.to; refreshValidMoves(); selectedPieceId = move.to; 
+                    drawAllPieces(); drawHighlights(); saveStateToHistory({ type: 'move_seq', from: move.from, to: move.to }, move);
+                    if(isLessonMode) { handleLessonProgress(false); }
+                    else if(currentPlayer !== globalBottomColor && !isAnalysis && (gameMode.startsWith('bot') || isRanked || isKlarkMode)) { setTimeout(playAI, 600); }
+                    return; 
+                }
+            }
+        } else { if(!isAnalysis && !isLessonMode) soundPlace(); }
+
+        if (promoted && !isAnalysis && !isLessonMode) soundPromote();
+        deadPieces = []; activeSequenceId = null; saveStateToHistory({ type: 'move', from: move.from, to: move.to, promoted: promoted }, move); drawAllPieces(); drawHighlights();
+        
+        if(isLessonMode) { handleLessonProgress(true); return; }
+        if(countPieces(currentPlayer===1?2:1) === 0) { endGame(currentPlayer); return; } 
+        
+        if(isKlarkMode && playerWhoMoved === globalBottomColor && !captureSequenceContinues) {
+            let engineBest = evaluateEngine(prevStateBoard, playerWhoMoved, 3);
+            let actualScore = evaluateEngine(boardState, playerWhoMoved === 1 ? 2 : 1, 2).score;
+            let diff = playerWhoMoved === 1 ? (actualScore - engineBest.score) : (engineBest.score - actualScore);
+            
+            if(diff < -15) { profMsg.innerHTML = "<b>?? Capivarada!</b> Veja a seta para a melhor jogada."; soundBlunder(); if(engineBest.move) drawArrow(engineBest.move.from, engineBest.move.to); }
+            else if(diff < -5) { profMsg.innerHTML = "<b>?! Erro.</b> Tinha um plano bem melhor aí."; soundBlunder(); if(engineBest.move) drawArrow(engineBest.move.from, engineBest.move.to); }
+            else if(diff < -2) { profMsg.innerHTML = "<b>? Imprecisão.</b> Não é terrível, mas eu teria jogado diferente."; clearArrow(); }
+            else if(move.from === (engineBest.move||{}).from && move.to === (engineBest.move||{}).to) { profMsg.innerHTML = "<b>★ Excelente!</b> Exatamente o que eu jogaria."; soundGood(); clearArrow(); }
+            else { profMsg.innerHTML = "<b>✓ Bom lance.</b> Posição sólida."; clearArrow(); }
+        }
+
+        switchTurn();
+    }
+
+    function countPieces(player) { return boardState.filter(p => p === player || p === player+2).length; }
+
+    function switchTurn() {
+        if(phase === 'END') return; handleTimeIncrement(); currentPlayer = currentPlayer === 1 ? 2 : 1; refreshValidMoves(); if(!isAnalysis) updateStatus();
+        if (currentPlayer !== globalBottomColor && !isAnalysis && (gameMode.startsWith('bot') || isRanked || isKlarkMode) && activeLessonIndex === -1) { 
+            boardDiv.style.pointerEvents = 'none'; let delay = isKlarkMode ? 2500 : 600; setTimeout(playAI, delay); 
+        } else { boardDiv.style.pointerEvents = 'auto'; }
+    }
+
+    function updateStatus() {
+        if(phase === 'END') return; 
+        
+        let lang = navigator.language.slice(0, 2).toLowerCase();
+        let whiteTxt = i18n[lang] && i18n[lang].white_pieces ? i18n[lang].white_pieces : 'Brancas';
+        let blackTxt = i18n[lang] && i18n[lang].black_pieces ? i18n[lang].black_pieces : 'Pretas';
+        
+        statusText.style.borderColor = currentPlayer === 1 ? 'var(--p1)' : 'var(--panel-border)'; 
+        statusText.innerHTML = `<b>${currentPlayer === 1 ? whiteTxt : blackTxt}</b>`;
+        
+        if(validMovesCache.length > 0 && validMovesCache[0].captured.length > 0) { 
+            statusText.innerHTML += ` - <span style="color:#fa412d">Captura Obrigatória!</span>`; statusText.style.borderColor = '#fa412d'; 
+        }
+    }
+
+    function undoMove() {
+        if(isAnalysis || historyLine.length <= 1 || phase === 'END' || activeLessonIndex !== -1 || isRanked) return;
+        if (hintArrowActive) { clearArrow(); hintArrowActive = false; }
+        historyLine.pop(); while((gameMode.startsWith('bot') || isKlarkMode) && historyLine.length > 1 && historyLine[historyLine.length-1].currentPlayer !== globalBottomColor) { historyLine.pop(); }
+        currentMoveIndex = historyLine.length - 1; let state = historyLine[currentMoveIndex]; boardState = [...state.boardState]; phase = state.phase; currentPlayer = state.currentPlayer; activeSequenceId = null; deadPieces = []; refreshValidMoves(); drawAllPieces(); drawHighlights(); updateStatus();
+    }
+
+    function getHint() {
+        if(isAnalysis || phase === 'END' || validMovesCache.length === 0) return;
+        let chosen;
+        if(activeLessonIndex !== -1) { let trg = Array.isArray(expectedMove) ? expectedMove[0] : expectedMove; chosen = validMovesCache.find(m => m.to === trg); } 
+        else { let engineData = evaluateEngine(boardState, currentPlayer, 3); chosen = engineData.move; }
+        if(!chosen) chosen = validMovesCache[Math.floor(Math.random() * validMovesCache.length)];
+        drawArrow(chosen.from, chosen.to); hintArrowActive = true;
+    }
+
+    function resign() { if(isAnalysis || phase === 'END') return; if(confirm("Deseja abandonar?")) endGame(currentPlayer === 1 ? 2 : 1); }
+
+    function endGame(winner, timeout = false) {
+        phase = 'END'; document.querySelectorAll('.sq').forEach(pt => pt.classList.remove('selected-mode', 'move-target')); 
+        
+        gameControls.style.display = 'none';
+        endControls.style.display = 'flex';
+
+        let isBotMode = gameMode.startsWith('bot') || isRanked || isKlarkMode; let isDefeat = isBotMode && winner !== globalBottomColor; let isVictory = isBotMode && winner === globalBottomColor;
+        let myName = loggedInUser ? loggedInUser.displayName : "Você"; let wName = "Brancas"; let bName = "Pretas";
+        
+        if (isBotMode) { if (globalBottomColor === 1) { wName = myName; bName = isKlarkMode ? 'Prof. Klark' : botName; } else { wName = isKlarkMode ? 'Prof. Klark' : botName; bName = myName; } } else if (gameMode === 'pvp') { wName = "Jogador 1"; bName = "Jogador 2"; }
+        
+        let resP1 = winner === 1 ? 1 : 0; let resP2 = winner === 2 ? 1 : 0;
+        let pgnHeader = `[Brancas "${wName}"]\n[Pretas "${bName}"]\n[Tempo "${timeControl}"]\n[Resultado "${resP1}-${resP2}"]\n\n`;
+        let codeStr = btoa(unescape(encodeURIComponent(JSON.stringify({history: historyLine, bottomColor: globalBottomColor}))));
+        
+        if (isRanked && loggedInUser) {
+            if(isVictory) { loggedInUser.elo += 15; } else { loggedInUser.elo -= 12; }
+        }
+
+        if (historyLine.length > 2 && !isAnalysis && activeLessonIndex === -1 && loggedInUser) {
+            loggedInUser.matchHistory.unshift({ date: new Date().toLocaleString(), wName: wName, bName: bName, res: `${resP1} - ${resP2}`, pgn: codeStr });
+            saveUsersDB();
+        }
+
+        document.getElementById('victory-standard-controls').style.display = 'flex';
+
+        let vicModal = document.getElementById('victory-modal'); vicModal.style.background = isDefeat ? 'rgba(40,0,0,0.9)' : 'rgba(0,0,0,0.85)';
+        if (isDefeat) {
+            document.getElementById('victory-title').innerText = '❌ Derrota!'; document.getElementById('victory-title').style.color = '#fa412d'; document.getElementById('victory-subtitle').innerText = timeout ? 'Seu tempo esgotou.' : 'Você perdeu.';
+        } else if (isVictory) {
+            document.getElementById('victory-title').innerText = '🏆 Vitória!'; document.getElementById('victory-title').style.color = '#f1c40f'; document.getElementById('victory-subtitle').innerText = timeout ? 'O tempo acabou.' : 'Adversário dominado.'; soundApplause(); shootConfetti();
+        } else {
+            document.getElementById('victory-title').innerText = winner === 1 ? '🏆 Brancas Vencem!' : '🏆 Pretas Vencem!'; document.getElementById('victory-title').style.color = '#f1c40f'; document.getElementById('victory-subtitle').innerText = timeout ? 'Vitória por tempo.' : 'Fim de Jogo.'; soundApplause(); shootConfetti();
+        }
+        document.getElementById('victory-pgn').value = pgnHeader + codeStr; openModal('victory-modal');
+    }
+
+    function copyVictoryPGN() { let ta = document.getElementById("victory-pgn"); ta.select(); try { document.execCommand('copy'); alert("Tags copiadas!"); } catch (e) { alert("Falha."); } }
+    
+    function importPGN(codeStr = null) {
+        closeModals(); const input = codeStr || document.getElementById('pgn-input').value; if(!input) return alert("Código vazio.");
+        try { 
+            let cl = input.split('\n\n').pop().trim(); const parsed = JSON.parse(decodeURIComponent(escape(atob(cl))));
+            if (parsed.history) { historyLine = parsed.history; globalBottomColor = parsed.bottomColor || 1; }
+            else if (Array.isArray(parsed) && parsed.length > 0) { historyLine = parsed; globalBottomColor = 1; }
+            currentAnalysisPGN = input; startAnalysisUI(); navHistory(-1000); 
+        } catch(e) { alert("Código inválido!"); }
+    }
+    function startAnalysisFromVictory() { closeModals(); currentAnalysisPGN = document.getElementById('victory-pgn').value; startAnalysisUI(); navHistory(-1000); }
+
+    function startAnalysisUI() {
+        showAppView('game'); isAnalysis = true; gameControls.style.display = 'none'; endControls.style.display = 'none'; profBox.style.display = 'none';
+        logContainer.style.display = 'flex'; analysisBar.style.display = 'grid';
+        logContent.innerHTML = '<div class="log-entry" style="text-align:center;"><b>Painel de Análise ♕</b></div>';
+        
+        let pgnBanner = document.getElementById('analysis-pgn-banner');
+        if(currentAnalysisPGN) { pgnBanner.style.display = 'block'; pgnBanner.innerText = "PGN-CODE: " + currentAnalysisPGN; } 
+        else { pgnBanner.style.display = 'none'; }
+        
+        statusText.innerHTML = "🔍 Modo Análise Automática"; statusText.style.borderColor = "var(--accent)";
+        boardDiv.style.pointerEvents = 'auto'; document.getElementById('box-p1').style.display = 'none'; document.getElementById('box-p2').style.display = 'none';
+        initBoardUI(); clearArrow();
+    }
+
+    function evaluateBoardStatic(b) {
+        let score = 0; 
+        for(let i=0; i<64; i++) { 
+            if (b[i] === 0) continue;
+            let row = Math.floor(i / 8);
+            if (b[i] === 1) score += 10 + (7 - row); else if (b[i] === 3) score += 40; 
+            else if (b[i] === 2) score -= 10 + row; else if (b[i] === 4) score -= 40; 
+        } return score;
+    }
+
+    function evaluateEngine(board, playerToMove, depth, reqStartId = null) {
+        let valid = calculateValidMoves(board, playerToMove, reqStartId);
+        if(valid.moves.length === 0) return { move: null, score: playerToMove === 1 ? -1000 : 1000 };
+        let bestScore = playerToMove === 1 ? -Infinity : Infinity; let bestMove = valid.moves[0];
+
+        for(let move of valid.moves) {
+            let nB = [...board]; let pT = nB[move.from]; nB[move.from] = 0; nB[move.to] = pT; move.captured.forEach(c => nB[c] = 0);
+            let promoted = false; let rowTo = Math.floor(move.to/8);
+            if (pT === globalBottomColor && rowTo === 0) { nB[move.to] = pT + 2; promoted = true; }
+            if (pT === (globalBottomColor === 1 ? 2 : 1) && rowTo === 7) { nB[move.to] = pT + 2; promoted = true; }
+            
+            let score; let nextValid = calculateValidMoves(nB, playerToMove, move.to);
+            if(!promoted && move.captured.length > 0 && nextValid.isCapture) { score = evaluateEngine(nB, playerToMove, depth, move.to).score; } 
+            else { if(depth === 0) { score = evaluateBoardStatic(nB); } else { score = evaluateEngine(nB, playerToMove === 1 ? 2 : 1, depth - 1).score; } }
+
+            if(playerToMove === 1) { if(score > bestScore) { bestScore = score; bestMove = move; } } else { if(score < bestScore) { bestScore = score; bestMove = move; } }
+        } return { move: bestMove, score: bestScore };
+    }
+
+    function navHistory(step) {
+        document.querySelectorAll('.eval-bubble').forEach(b => b.remove()); clearArrow();
+        let newIndex = currentMoveIndex + step;
+        if (newIndex < 0) newIndex = 0; if (newIndex >= historyLine.length) newIndex = historyLine.length - 1; currentMoveIndex = newIndex;
+        let state = historyLine[currentMoveIndex]; boardState = [...state.boardState]; phase = state.phase; currentPlayer = state.currentPlayer; drawAllPieces();
+        
+        if (newIndex === 0) { logContent.innerHTML = '<div class="log-entry" style="text-align:center;"><b>Painel de Análise ♕</b></div>'; }
+
+        if (state.action && state.action.type !== 'start' && currentMoveIndex > 0) {
+            let prevState = historyLine[currentMoveIndex - 1]; let rawMove = state.rawMove; 
+            
+            if(rawMove && prevState.phase === 'PLAY') {
+                let playerWhoMoved = state.currentPlayer; 
+                let reqStart = (prevState.action && prevState.action.type === 'move_seq') ? prevState.action.to : null;
+                
+                let engineBest = evaluateEngine(prevState.boardState, playerWhoMoved, 3, reqStart);
+                let actualScore = evaluateEngine(state.boardState, playerWhoMoved === 1 ? 2 : 1, 2).score; 
+                let diff = playerWhoMoved === 1 ? (actualScore - engineBest.score) : (engineBest.score - actualScore);
+                let moveStr = `${getAlgebraic(rawMove.from)} > ${getAlgebraic(rawMove.to)}`;
+                
+                let isSacrifice = false; let oppPlayer = playerWhoMoved === 1 ? 2 : 1; let oppValid = calculateValidMoves(state.boardState, oppPlayer);
+                let isBestMove = (engineBest.move && rawMove.from === engineBest.move.from && rawMove.to === engineBest.move.to);
+                let massiveCapture = rawMove.captured.length >= 3; let isTrueSacrifice = false;
+
+                if (isBestMove && oppValid.isCapture) {
+                    let oppResponse = evaluateEngine(state.boardState, oppPlayer, 1);
+                    if (oppResponse.move && oppResponse.move.captured.length > 0) {
+                        let simB = [...state.boardState];
+                        let pT = simB[oppResponse.move.from]; simB[oppResponse.move.from] = 0; simB[oppResponse.move.to] = pT;
+                        oppResponse.move.captured.forEach(c => simB[c] = 0);
+                        
+                        let oppRowTo = Math.floor(oppResponse.move.to / 8);
+                        if (pT === globalBottomColor && oppRowTo === 0) simB[oppResponse.move.to] = pT + 2;
+                        if (pT === (globalBottomColor === 1 ? 2 : 1) && oppRowTo === 7) simB[oppResponse.move.to] = pT + 2;
+
+                        let myResponse = evaluateEngine(simB, playerWhoMoved, 1);
+                        if (myResponse.move && myResponse.move.captured.length > 0) {
+                            let gainedMaterial = myResponse.move.captured.length > oppResponse.move.captured.length;
+                            let myRowTo = Math.floor(myResponse.move.to / 8); let myPiece = simB[myResponse.move.from];
+                            let crowned = (myPiece === globalBottomColor && myRowTo === 0) || (myPiece === (globalBottomColor===1?2:1) && myRowTo === 7);
+                            if (gainedMaterial || crowned) { isTrueSacrifice = true; }
+                        }
+                    }
+                }
+
+                let isBrilliant = massiveCapture || isTrueSacrifice;
+                let evalTag, evalCls, colorCls, evalMsg;
+
+                if (isBrilliant) { evalTag = '!!'; evalCls = 'eval-brilliant'; colorCls = 'color-brilliant'; evalMsg = 'Golpe Brilhante!'; soundPromote(); } 
+                else if (isBestMove && !isSacrifice) { evalTag = '★'; evalCls = 'eval-good'; colorCls = 'color-good'; evalMsg = 'Melhor Lance'; soundGood(); } 
+                else if (diff >= -3 && !isBestMove) { evalTag = '✓'; evalCls = 'eval-ok'; colorCls = 'color-ok'; evalMsg = 'Bom Lance'; soundPlace(); }
+                else if (diff < -15) { evalTag = '??'; evalCls = 'eval-blunder'; colorCls = 'color-blunder'; evalMsg = 'Capivarada'; soundBlunder(); } 
+                else if (diff < -8) { evalTag = '?!'; evalCls = 'eval-mistake'; colorCls = 'color-mistake'; evalMsg = 'Erro'; soundBlunder(); } 
+                else if (diff < -3) { evalTag = '?'; evalCls = 'eval-mistake'; colorCls = 'color-mistake'; evalMsg = 'Imprecisão'; soundBlunder(); } 
+                else if (rawMove.captured.length > 0) { evalTag = '★'; evalCls = 'eval-good'; colorCls = 'color-good'; evalMsg = 'Boa Captura'; soundGood(); } 
+                else { evalTag = '✓'; evalCls = 'eval-ok'; colorCls = 'color-ok'; evalMsg = 'Lance de Posição'; soundPlace(); }
+
+                let showArrow = (!isBestMove && evalTag !== '!!' && engineBest.move);
+                if (showArrow) { drawArrow(engineBest.move.from, engineBest.move.to); }
+
+                let targetId = rawMove.to; const sq = document.querySelector(`.sq[data-id="${targetId}"]`);
+                if(sq) {
+                    const bubble = document.createElement('div'); bubble.className = `eval-bubble ${evalCls}`; 
+                    bubble.innerText = evalTag; bubble.style.top = "50%"; bubble.style.left = "50%"; bubble.style.transform = "translate(-50%, -50%)"; sq.appendChild(bubble); 
+                }
+
+                let pStr = playerWhoMoved === 1 ? 'Brancas' : 'Pretas'; 
+                logContent.innerHTML += `<div class="log-entry"><b>${pStr}</b>: ${moveStr} <span class="${colorCls}">[${evalMsg}]</span> <b class="${colorCls}">${evalTag}</b></div>`;
+                logContent.scrollTop = logContent.scrollHeight;
+            } else { if(rawMove && rawMove.captured.length > 0) soundCapture(); else soundPlace(); }
+        } else { soundPlace(); }
+    }
+
+    function filterHistory() {
+        let term = document.getElementById('search-history').value.toLowerCase();
+        let items = document.querySelectorAll('.history-item');
+        items.forEach(item => { if(item.innerText.toLowerCase().includes(term)) { item.style.display = 'flex'; } else { item.style.display = 'none'; } });
+    }
+
+    function copyPGNToClipboard(codeStr) { navigator.clipboard.writeText(codeStr).then(() => { alert("Tags copiadas!"); }); }
+
+    function openHistory() {
+        const listDiv = document.getElementById('history-list'); listDiv.innerHTML = ''; document.getElementById('search-history').value = ''; 
+        if(!loggedInUser || !loggedInUser.matchHistory || loggedInUser.matchHistory.length === 0) { listDiv.innerHTML = '<p style="color:var(--text-muted)">Nenhuma partida jogada.</p>'; } 
+        else { 
+            loggedInUser.matchHistory.forEach((m) => { 
+                listDiv.innerHTML += `
+                <div class="history-item">
+                    <div>
+                        <strong style="font-size: 1.1em;">${m.wName} ${m.res} ${m.bName}</strong><br>
+                        <small style="color:var(--text-muted)">${m.date}</small>
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn-primary" onclick="importPGN('${m.pgn}')">Rever</button>
+                        <button class="btn-info" title="Copiar Tags (PGN)" onclick="copyPGNToClipboard('${m.pgn}')">ⓘ</button>
+                    </div>
+                </div>`; 
+            }); 
+        } openModal('history-modal');
+    }
+
+    function clearHistory() { if(confirm("Apagar todo o histórico?")) { if(loggedInUser) { loggedInUser.matchHistory = []; saveUsersDB(); openHistory(); } } }
+
+    function playAI() {
+        if (phase === 'END') return;
+        if (validMovesCache.length > 0) {
+            let depth = 1; if(currentBotElo > 1000) depth = 2; if(currentBotElo > 2000) depth = 3;
+            let botColor = globalBottomColor === 1 ? 2 : 1; let engineData = evaluateEngine(boardState, botColor, depth); let chosen = engineData.move;
+            if(!chosen || currentBotElo < 800 && Math.random() > 0.5) { chosen = validMovesCache[Math.floor(Math.random() * validMovesCache.length)]; }
+            processMove(chosen);
+        }
+    }
+
+    function drawAllPieces() {
+        document.querySelectorAll('.piece').forEach(p => p.remove());
+        for(let i=0; i<64; i++) {
+            let val = boardState[i];
+            if (val !== 0 && !deadPieces.includes(i)) {
+                const piece = document.createElement('div'); piece.classList.add('piece');
+                if (val === 1 || val === 3) piece.classList.add('p1'); if (val === 2 || val === 4) piece.classList.add('p2');
+                if (val === 3 || val === 4) piece.classList.add('king');
+                let r = Math.floor(i / 8), c = i % 8; piece.style.left = ((c * 12.5) + 6.25) + '%'; piece.style.top = ((r * 12.5) + 6.25) + '%'; boardDiv.appendChild(piece);
+            }
+        }
+    }
+
+    const lessonsDatabase = [
+        { section: "Fundamentos Básicos", lessons: [
+            { id: "b1", title: "1. Movimento Simples", setup: () => { boardState[35] = 1; globalBottomColor = 1; currentPlayer = 1; expectedMove = [26, 28]; profMsg.innerHTML="Mova a peça para a diagonal (frente)."; } },
+            { id: "b2", title: "2. Captura Obrigatória", setup: () => { boardState[35] = 1; boardState[26] = 2; boardState[28] = 2; globalBottomColor = 1; currentPlayer = 1; expectedMove = [17, 21]; profMsg.innerHTML="Você é <b>obrigado</b> a capturar! Escolha um dos lados."; } },
+            { id: "b3", title: "3. Lei da Maioria", setup: () => { boardState[44] = 1; boardState[35] = 2; boardState[37] = 2; boardState[21] = 2; globalBottomColor = 1; currentPlayer = 1; expectedMove = 30; profMsg.innerHTML="Lei da Maioria: Escolha o caminho que captura MAIS peças."; } },
+            { id: "b4", title: "4. O Voo da Dama", setup: () => { boardState[56] = 3; boardState[28] = 2; globalBottomColor = 1; currentPlayer = 1; expectedMove = [21, 14, 7]; profMsg.innerHTML="A Dama ♕ voa e pousa em qualquer casa vazia após a captura."; } }
+        ]},
+        { section: "Aberturas (Entradas)", lessons: [
+            { id: "a1", title: "1. Abertura Russa", setup: () => { setupInitialBoard(); globalBottomColor = 1; currentPlayer = 1; expectedMove = 35; profMsg.innerHTML="Jogue C3-D4. Uma abertura sólida e ofensiva pelo centro."; } },
+            { id: "a2", title: "2. Abertura Pioneiro", setup: () => { setupInitialBoard(); globalBottomColor = 1; currentPlayer = 1; expectedMove = 37; profMsg.innerHTML="Jogue G3-F4. Prepara domínio das alas."; } }
+        ]},
+        { section: "Táticas & Armadilhas", lessons: [
+            { id: "t1", title: "1. A Oposição", setup: () => { boardState[21] = 1; boardState[7] = 2; globalBottomColor = 1; currentPlayer = 1; expectedMove = 14; profMsg.innerHTML="Mova sua peça para trancar a negra. Ganhe a oposição para vencer."; } },
+            { id: "t2", title: "2. Sacrifício Básico", setup: () => { boardState[42] = 1; boardState[49] = 1; boardState[28] = 2; boardState[26] = 2; globalBottomColor = 1; currentPlayer = 1; expectedMove = 35; profMsg.innerHTML="Entregue a peça C3 para D4. Depois, use a pedra de trás para comer duas!"; } },
+            { id: "t3", title: "3. Arapuca", setup: () => { boardState[46] = 1; boardState[55] = 1; boardState[28] = 2; globalBottomColor = 1; currentPlayer = 1; expectedMove = 37; profMsg.innerHTML="Arme a arapuca movendo G3-F4, forçando o oponente a pular e cair na rede da sua outra peça."; } }
+        ]}
+    ];
+    let flatLessonList = []; lessonsDatabase.forEach(s => s.lessons.forEach(l => flatLessonList.push(l)));
+
+    function renderLessonsModal() {
+        const container = document.getElementById('lessons-container'); container.innerHTML = '';
+        lessonsDatabase.forEach(sec => {
+            let secDiv = document.createElement('div'); secDiv.innerHTML = `<h3 class="lesson-section-title">${sec.section}</h3>`;
+            let grid = document.createElement('div'); grid.className = 'lessons-grid';
+            sec.lessons.forEach(l => { let btn = document.createElement('button'); btn.className = 'lesson-btn'; btn.innerText = l.title; btn.onclick = () => loadLesson(l.id); grid.appendChild(btn); }); secDiv.appendChild(grid); container.appendChild(secDiv);
+        });
+    }
+
+    function switchSchoolTab(tab) {
+        document.getElementById('tab-school-interactive').classList.remove('active'); document.getElementById('tab-school-manual').classList.remove('active');
+        document.getElementById('lessons-container').style.display = 'none'; document.getElementById('rules-container').style.display = 'none';
+        if(tab === 'interactive') { document.getElementById('tab-school-interactive').classList.add('active'); document.getElementById('lessons-container').style.display = 'block'; }
+        else { document.getElementById('tab-school-manual').classList.add('active'); document.getElementById('rules-container').style.display = 'block'; }
+    }
+
+    function loadLesson(typeId) {
+        closeModals(); showAppView('game'); boardState = Array(64).fill(0); isAnalysis = false; deadPieces = []; activeSequenceId = null;
+        logContainer.style.display = 'none'; analysisBar.style.display = 'none'; gameControls.style.display = 'none'; endControls.style.display = 'none';
+        profBox.style.display = 'block'; clearArrow(); hintArrowActive = false; document.getElementById('box-p1').style.display = 'none'; document.getElementById('box-p2').style.display = 'none';
+        
+        let idx = flatLessonList.findIndex(x => x.id === typeId);
+        if(idx !== -1) { activeLessonIndex = idx; flatLessonList[idx].setup(); }
+        initBoardUI(); refreshValidMoves();
+    }
+
+    function handleLessonProgress(isComplete = false) {
+        if(isComplete) { soundApplause(); shootConfetti(); profMsg.innerHTML = "Excelente! Módulo concluído."; setTimeout(() => { openModal('lesson-complete-modal'); }, 1500); } 
+        else { profMsg.innerHTML = "Continue a sequência de captura!"; soundPromote(); }
+    }
+
+    function loadNextLesson() {
+        document.getElementById('lesson-complete-modal').style.display = 'none';
+        if(activeLessonIndex + 1 < flatLessonList.length) { loadLesson(flatLessonList[activeLessonIndex + 1].id); } 
+        else { openModal('school-modal'); activeLessonIndex = -1; alert("Você completou toda a Escola de Damas."); }
+    }
+
+    renderLessonsModal(); 
+</script>
+</body>
+</html>
