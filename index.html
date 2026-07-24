@@ -460,9 +460,9 @@
         
         if(!user || !pass) { err.innerText = "Preencha todos os campos."; err.style.display = 'block'; return; }
         
-        // REGRAS DE SEGURANÇA E CARACTERES
-        const regex = /^[a-zA-Z0-9]+$/;
-        if(!regex.test(user)) { err.innerText = "O nome só pode ter letras e números."; err.style.display = 'block'; return; }
+        // REGRAS DE SEGURANÇA (Agora aceita acentos e underscore, mas sem espaços)
+        const regex = /^[a-zA-Z0-9_À-ÿ]+$/;
+        if(!regex.test(user)) { err.innerText = "O nome não pode ter espaços ou símbolos especiais."; err.style.display = 'block'; return; }
         if(user.length < 3 || user.length > 12) { err.innerText = "O nome deve ter entre 3 e 12 caracteres."; err.style.display = 'block'; return; }
         if(pass.length < 6) { err.innerText = "A senha deve ter no mínimo 6 caracteres."; err.style.display = 'block'; return; }
 
@@ -471,7 +471,23 @@
         if (action === 'register') {
             socket.emit('register', { username: user, password: hashedPass }, (response) => {
                 if(response.success) {
-                    err.style.color = 'var(--accent)'; err.innerText = "Conta criada com sucesso! Faça login."; err.style.display = 'block';
+                    // LOGA AUTOMATICAMENTE APÓS O CADASTRO!
+                    socket.emit('login', { username: user, password: hashedPass }, (loginRes) => {
+                        if(loginRes.success) {
+                            if (remember) {
+                                localStorage.setItem('damas_session', user); 
+                                localStorage.setItem('damas_hash', hashedPass);
+                                sessionStorage.removeItem('damas_session');
+                                sessionStorage.removeItem('damas_hash');
+                            } else {
+                                sessionStorage.setItem('damas_session', user);
+                                sessionStorage.setItem('damas_hash', hashedPass);
+                                localStorage.removeItem('damas_session');
+                                localStorage.removeItem('damas_hash');
+                            }
+                            finalizeLogin(loginRes.userData);
+                        }
+                    });
                 } else {
                     err.style.color = '#FA412D'; err.innerText = response.msg; err.style.display = 'block';
                 }
